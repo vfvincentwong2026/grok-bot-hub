@@ -1,0 +1,19 @@
+name = "grok-bot-hub"
+main = "workers/src/index.ts"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "LEADERBOARD_KV"
+id = "<replace-after-wrangler-kv-namespace-create>"
+
+[vars]
+GROK_DEFAULT_MODEL = "grok-4.7"
+XAI_BASE_URL = "https://api.x.ai/v1"
+
+# 生产环境通过 `wrangler secret put` 设置：
+#   wrangler secret put XAI_API_KEY
+#   wrangler secret put A2A_SHARED_SECRET
