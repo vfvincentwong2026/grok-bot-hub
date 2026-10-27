@@ -1,0 +1,13 @@
+{
+  "name": "DM Funnel",
+  "description": "User-initiated DM reply drafting only; no bulk messaging.",
+  "version": "0.1.0",
+  "skills": [
+    {
+      "id": "draft_reply",
+      "name": "Draft DM Reply",
+      "description": "Drafts one compliant reply to a user-initiated DM.",
+      "tags": ["dm", "conversion", "compliance"]
+    }
+  ]
+}
