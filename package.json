@@ -1,0 +1,25 @@
+{
+  "name": "grok-bot-hub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A2A registry and leaderboard for Grok bots on Cloudflare Workers",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint workers/src --ext .ts",
+    "format": "prettier --write \"workers/src/**/*.ts\"",
+    "types": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250601.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.0.0"
+  }
+}
