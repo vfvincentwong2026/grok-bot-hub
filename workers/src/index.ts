@@ -1,5 +1,6 @@
-import { handleLeaderboard } from "./leaderboard";
+import { handleLeaderboard, recordMetric } from "./leaderboard";
 import { checkXPolicy } from "./policy";
+import { getAgentCards, getBot, listBots } from "./registry";
 
 interface Env {
   AI: Ai;
@@ -21,6 +22,14 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/v1/leaderboard") {
       return handleLeaderboard(env);
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/bots") {
+      return json({ ok: true, bots: listBots() });
+    }
+
+    if (request.method === "GET" && url.pathname === "/.well-known/agent-card.json") {
+      return json({ agents: getAgentCards() });
     }
 
     if (request.method === "POST" && url.pathname === "/v1/a2a/invoke") {
@@ -54,19 +63,31 @@ async function handleInvoke(request: Request, env: Env): Promise<Response> {
     return json({ ok: false, error: "x_policy_violation", reason: policy.reason }, 403);
   }
 
-  const started = Date.now();
+  const bot = getBot(body.target_bot);
+  if (!bot) return json({ ok: false, error: "bot_not_found" }, 404);
 
-  // Route through Cloudflare AI Gateway to xAI
-  // Chat Completions is deprecated; prefer /v1/responses on xAI
-  const aiResp = await env.AI.run(
-    `xai/${env.GROK_DEFAULT_MODEL}`,
-    {
-      messages: buildMessages(body),
-    },
-    { gateway: { id: env.AI_GATEWAY_ID ?? "default" } },
-  );
+  const started = Date.now();
+  let aiResp: unknown;
+
+  try {
+    const { system, user } = bot.buildPrompt(body.payload ?? {});
+    const messages = [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ];
+    aiResp = await env.AI.run(
+      `xai/${env.GROK_DEFAULT_MODEL}`,
+      { messages },
+      { gateway: { id: env.AI_GATEWAY_ID ?? "default" } },
+    );
+  } catch {
+    const latency_ms = Date.now() - started;
+    await recordMetric(env, bot.id, { latency_ms, ok: false });
+    return json({ ok: false, error: "ai_invocation_failed" }, 500);
+  }
 
   const latency_ms = Date.now() - started;
+  await recordMetric(env, bot.id, { latency_ms, ok: true });
 
   return json({
     ok: true,
@@ -75,13 +96,6 @@ async function handleInvoke(request: Request, env: Env): Promise<Response> {
     result: aiResp,
     usage: { latency_ms },
   });
-}
-
-function buildMessages(body: any): any[] {
-  return [
-    { role: "system", content: `You are ${body.target_bot}. Follow X platform automation rules strictly.` },
-    { role: "user", content: JSON.stringify(body.payload) },
-  ];
 }
 
 function json(data: unknown, status = 200): Response {

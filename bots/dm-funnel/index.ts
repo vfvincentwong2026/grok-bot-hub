@@ -5,6 +5,19 @@ export const dmFunnel: BotBlueprint = {
   name: "DM Funnel",
   description:
     "针对用户主动发起的 DM，生成个性化转化话术；拒绝任何未授权群发。",
+  agentCard: {
+    name: "DM Funnel",
+    description: "针对用户主动发起的 DM，生成个性化转化话术；拒绝任何未授权群发。",
+    version: "0.1.0",
+    skills: [
+      {
+        id: "draft_reply",
+        name: "Draft DM Reply",
+        description: "基于用户主动消息上下文生成单条合规回复草稿。",
+        tags: ["dm", "conversion", "compliance"],
+      },
+    ],
+  },
   skills: [
     {
       id: "draft_reply",

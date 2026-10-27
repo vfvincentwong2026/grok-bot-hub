@@ -1,3 +1,10 @@
+export interface BotSkill {
+  id: string;
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
 export interface AgentCard {
   name: string;
   description: string;

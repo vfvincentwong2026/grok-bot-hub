@@ -26,3 +26,9 @@ export function listBots(): Array<{
     skills: b.skills.map((s) => s.id),
   }));
 }
+
+export function getAgentCards() {
+  const cards: Record<string, unknown> = {};
+  for (const bot of registry.values()) cards[bot.id] = bot.agentCard;
+  return cards;
+}

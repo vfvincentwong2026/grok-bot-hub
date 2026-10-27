@@ -5,6 +5,19 @@ export const dramaHook: BotBlueprint = {
   name: "Drama Hook Analyzer",
   description:
     "分析短剧脚本前 3 秒钩子强度，输出 hook_score、改进建议与目标受众适配度。",
+  agentCard: {
+    name: "Drama Hook Analyzer",
+    description: "分析短剧脚本前 3 秒钩子强度，输出 hook_score、改进建议与目标受众适配度。",
+    version: "0.1.0",
+    skills: [
+      {
+        id: "analyze_hook",
+        name: "Analyze Short-Drama Hook",
+        description: "评估短剧剧本开场钩子的强度并给出可执行改进建议。",
+        tags: ["short-drama", "hook-analysis"],
+      },
+    ],
+  },
   skills: [
     {
       id: "analyze_hook",

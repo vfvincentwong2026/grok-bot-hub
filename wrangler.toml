@@ -6,6 +6,9 @@ compatibility_flags = ["nodejs_compat"]
 [ai]
 binding = "AI"
 
+[triggers]
+crons = ["*/5 * * * *"]
+
 [[kv_namespaces]]
 binding = "LEADERBOARD_KV"
 id = "<replace-after-wrangler-kv-namespace-create>"

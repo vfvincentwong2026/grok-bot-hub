@@ -1,0 +1,21 @@
+# GrokBotHub
+
+> A2A registry and leaderboard for xAI Grok micro-agents.
+
+## Endpoints
+
+- POST /v1/a2a/invoke
+- GET /v1/bots
+- GET /.well-known/agent-card.json
+- GET /v1/leaderboard
+- GET /health
+
+## Bots
+
+- bot:drama-hook-analyzer — 短剧前 3 秒钩子分析
+- bot:viral-radar — 用户样本趋势信号
+- bot:dm-funnel — 用户主动 DM 单条回复草稿
+
+## Compliance
+
+- 不抓取平台；自动 DM/回复需 user_initiated；发布需 bot_disclosed

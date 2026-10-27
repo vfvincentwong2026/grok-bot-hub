@@ -10,7 +10,7 @@
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint workers/src --ext .ts",
+    "lint": "eslint .",
     "format": "prettier --write \"workers/src/**/*.ts\"",
     "types": "wrangler types"
   },
@@ -19,6 +19,7 @@
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
     "vitest": "^3.0.0",
     "wrangler": "^4.0.0"
   }

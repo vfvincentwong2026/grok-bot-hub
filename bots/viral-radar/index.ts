@@ -5,6 +5,19 @@ export const viralRadar: BotBlueprint = {
   name: "Viral Radar",
   description:
     "基于给定关键词/样本，输出 X 与短视频平台的趋势信号与内容机会。",
+  agentCard: {
+    name: "Viral Radar",
+    description: "基于给定关键词/样本，输出 X 与短视频平台的趋势信号与内容机会。",
+    version: "0.1.0",
+    skills: [
+      {
+        id: "scan_trends",
+        name: "Scan Trend Signals",
+        description: "从提供的样本文本中提炼趋势主题、情绪极性与内容机会。",
+        tags: ["trends", "content-intelligence"],
+      },
+    ],
+  },
   skills: [
     {
       id: "scan_trends",
