@@ -11,7 +11,7 @@ crons = ["*/5 * * * *"]
 
 [[kv_namespaces]]
 binding = "LEADERBOARD_KV"
-id = "<replace-after-wrangler-kv-namespace-create>"
+id = "79cb3f9fe17044f0973dfd77e2d3ee85"
 
 [vars]
 GROK_DEFAULT_MODEL = "grok-4.7"
