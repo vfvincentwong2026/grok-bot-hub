@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grokbothub.com/a2a/schema.json",
+  "title": "GrokBotHub A2A Protocol v1",
+  "description": "Agent-to-Agent invocation and registration schema for GrokBotHub.",
+  "type": "object",
+  "required": ["protocol", "target_bot", "payload"],
+  "properties": {
+    "protocol": {
+      "type": "string",
+      "const": "A2A-v1"
+    },
+    "method": {
+      "type": "string",
+      "enum": ["invoke", "register", "discover"],
+      "default": "invoke"
+    },
+    "target_bot": {
+      "type": "string",
+      "description": "Bot identifier, e.g. bot:drama-hook-analyzer"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Bot-specific input. Shape is defined per bot in skills[]."
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "session_id": { "type": "string" },
+        "request_id": { "type": "string" },
+        "caller": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "agentCard": {
+      "type": "object",
+      "required": ["name", "description", "skills"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "version": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "description"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "tags": { "type": "array", "items": { "type": "string" } },
+              "inputSchema": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "a2aResponse": {
+      "type": "object",
+      "required": ["ok"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "result": {},
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" }
+          }
+        },
+        "usage": {
+          "type": "object",
+          "properties": {
+            "latency_ms": { "type": "number" },
+            "tokens": { "type": "number" }
+          }
+        }
+      }
+    }
+  }
+}
