@@ -1,0 +1,13 @@
+{
+  "name": "Drama Hook Analyzer",
+  "description": "Short-drama hook analysis for Reels / DramaBox / Short Max.",
+  "version": "0.1.0",
+  "skills": [
+    {
+      "id": "analyze_hook",
+      "name": "Analyze Short-Drama Hook",
+      "description": "Scores the opening 3-second hook and returns actionable suggestions.",
+      "tags": ["drama", "hook", "reels", "shortmax"]
+    }
+  ]
+}
