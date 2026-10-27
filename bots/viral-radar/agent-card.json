@@ -1,0 +1,13 @@
+{
+  "name": "Viral Radar",
+  "description": "Trend intelligence from user-provided samples only; no scraping.",
+  "version": "0.1.0",
+  "skills": [
+    {
+      "id": "scan_trends",
+      "name": "Scan Trend Signals",
+      "description": "Extracts themes, sentiment, and opportunities from provided samples.",
+      "tags": ["trends", "x", "tiktok", "intelligence"]
+    }
+  ]
+}
