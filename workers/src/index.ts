@@ -1,3 +1,4 @@
+import { renderHome } from "./home";
 import { handleLeaderboard, recordMetric } from "./leaderboard";
 import { checkXPolicy } from "./policy";
 import { getAgentCards, getBot, listBots } from "./registry";
@@ -15,6 +16,10 @@ interface Env {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/") {
+      return renderHome();
+    }
 
     if (request.method === "GET" && url.pathname === "/health") {
       return json({ ok: true, service: "grok-bot-hub" });
