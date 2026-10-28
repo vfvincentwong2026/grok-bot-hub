@@ -1,10 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../workers/src/index";
 
 function createEnv() {
   const store = new Map<string, string>();
   const env = {
-    AI: { run: vi.fn().mockResolvedValue({ hook_score: 87 }) },
     LEADERBOARD_KV: {
       get: vi.fn(async (key: string, type?: string) => {
         const value = store.get(key) ?? null;
@@ -48,6 +47,22 @@ const validRequest = {
 };
 
 describe("POST /v1/a2a/invoke", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ output_text: '{"hook_score":87}' }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("returns 401 for bad authorization", async () => {
     const { env } = createEnv();
     const response = await invoke(env, validRequest, false);
@@ -72,25 +87,29 @@ describe("POST /v1/a2a/invoke", () => {
     });
 
     expect(response.status).toBe(403);
-    expect(env.AI.run).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("routes the bot prompt to AI and returns 200", async () => {
+  it("routes the bot prompt to the xAI Responses API and returns 200", async () => {
     const { env } = createEnv();
     const response = await invoke(env, validRequest);
 
     expect(response.status).toBe(200);
-    expect(env.AI.run).toHaveBeenCalledOnce();
-    expect(env.AI.run).toHaveBeenCalledWith(
-      "xai/grok-test",
-      {
-        messages: [
-          { role: "system", content: expect.stringContaining("Drama Hook Analyzer") },
-          { role: "user", content: expect.any(String) },
-        ],
-      },
-      { gateway: { id: "default" } },
-    );
+    expect(fetch).toHaveBeenCalledOnce();
+    const [url, options] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe("https://api.x.ai/v1/responses");
+    expect(options?.method).toBe("POST");
+    expect(options?.headers).toEqual({
+      "content-type": "application/json",
+      Authorization: "Bearer test-xai-key",
+    });
+    expect(JSON.parse(String(options?.body))).toEqual({
+      model: "grok-test",
+      input: [
+        { role: "system", content: expect.stringContaining("Drama Hook Analyzer") },
+        { role: "user", content: expect.any(String) },
+      ],
+    });
   });
 
   it("writes bot metrics to KV after invocation", async () => {
@@ -112,7 +131,7 @@ describe("POST /v1/a2a/invoke", () => {
 
   it("records failures when AI throws", async () => {
     const { env, store } = createEnv();
-    env.AI.run = vi.fn().mockRejectedValue(new Error("AI unavailable"));
+    vi.mocked(fetch).mockRejectedValue(new Error("AI unavailable"));
 
     const response = await invoke(env, validRequest);
     const raw = store.get("metrics:bot:drama-hook-analyzer");

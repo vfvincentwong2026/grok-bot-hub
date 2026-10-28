@@ -80,11 +80,16 @@ async function handleInvoke(request: Request, env: Env): Promise<Response> {
       { role: "system", content: system },
       { role: "user", content: user },
     ];
-    aiResp = await env.AI.run(
-      `xai/${env.GROK_DEFAULT_MODEL}`,
-      { messages },
-      { gateway: { id: env.AI_GATEWAY_ID ?? "default" } },
-    );
+    const response = await fetch(`${env.XAI_BASE_URL}/responses`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${env.XAI_API_KEY}`,
+      },
+      body: JSON.stringify({ model: env.GROK_DEFAULT_MODEL, input: messages }),
+    });
+    if (!response.ok) throw new Error(`xAI request failed with status ${response.status}`);
+    aiResp = await response.json();
   } catch {
     const latency_ms = Date.now() - started;
     await recordMetric(env, bot.id, { latency_ms, ok: false });
