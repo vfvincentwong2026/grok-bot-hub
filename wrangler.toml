@@ -13,6 +13,14 @@ crons = ["*/5 * * * *"]
 binding = "LEADERBOARD_KV"
 id = "79cb3f9fe17044f0973dfd77e2d3ee85"
 
+[[durable_objects.bindings]]
+name = "USAGE_COUNTER"
+class_name = "UsageCounter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UsageCounter"]
+
 [vars]
 GROK_DEFAULT_MODEL = "grok-4.7"
 XAI_BASE_URL = "https://api.x.ai/v1"

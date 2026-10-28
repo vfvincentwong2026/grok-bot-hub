@@ -1,25 +1,35 @@
+import { handleCheckout, handleCheckoutComplete, isStripeConfigured } from "./billing";
 import { handleDemoInvoke } from "./demo";
 import { renderHome } from "./home";
 import { handleLeaderboard, recordMetric } from "./leaderboard";
+import { handlePaidInvoke } from "./paid";
 import { checkXPolicy } from "./policy";
 import { getAgentCards, getBot, listBots } from "./registry";
+
+export { UsageCounter } from "./usage-counter";
 
 interface Env {
   AI: Ai;
   LEADERBOARD_KV: KVNamespace;
+  USAGE_COUNTER: DurableObjectNamespace;
   XAI_API_KEY: string;
   XAI_BASE_URL: string;
   GROK_DEFAULT_MODEL: string;
   A2A_SHARED_SECRET: string;
   AI_GATEWAY_ID?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_PRICE_CREATOR_MONTHLY?: string;
+  STRIPE_PRICE_CREATOR_ANNUAL?: string;
+  STRIPE_PRICE_STUDIO_MONTHLY?: string;
+  STRIPE_PRICE_STUDIO_ANNUAL?: string;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (request.method === "GET" && url.pathname === "/") {
-      return renderHome();
+    if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/pricing")) {
+      return renderHome({ checkoutEnabled: isStripeConfigured(env) });
     }
 
     if (request.method === "GET" && url.pathname === "/health") {
@@ -40,6 +50,18 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/v1/demo/invoke") {
       return handleDemoInvoke(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/app/invoke") {
+      return handlePaidInvoke(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/billing/checkout") {
+      return handleCheckout(request, env);
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/billing/complete") {
+      return handleCheckoutComplete(request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/a2a/invoke") {

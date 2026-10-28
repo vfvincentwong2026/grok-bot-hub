@@ -1,7 +1,8 @@
+import { pricingScript, pricingStyles, renderPricingSection } from "./pricing-view";
 import { getAgentCards, listBots } from "./registry";
 import type { AgentCard } from "./types";
 
-export function renderHome(): Response {
+export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEnabled: false }): Response {
   const bots = listBots();
   const cards = getAgentCards() as Record<string, AgentCard>;
 
@@ -225,6 +226,7 @@ export function renderHome(): Response {
       .table-wrap { overflow-x: auto; }
     }
     @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    ${pricingStyles}
   </style>
 </head>
 <body>
@@ -239,6 +241,7 @@ export function renderHome(): Response {
     </a>
     <nav class="nav" aria-label="Main navigation">
       <a href="#demo">Live demo</a>
+      <a href="#pricing">Pricing</a>
       <a href="#bots">Bots</a>
       <a href="#agent-cards">Agent Cards</a>
       <a href="#leaderboard">Leaderboard</a>
@@ -283,13 +286,15 @@ export function renderHome(): Response {
       </div>
       <div class="demo-conversion">
         <div><strong>Need this inside your writers’ room?</strong><p>Connect your scripts, brand rules, and review workflow to a production API.</p></div>
-        <a class="button secondary" href="https://github.com/vfvincentwong2026/grok-bot-hub/issues/new?title=Short-drama%20API%20access">Request production API →</a>
+        <a class="button secondary" href="#pricing">View API plans →</a>
       </div>
     </section>
 
+    ${renderPricingSection(options.checkoutEnabled)}
+
     <section id="bots">
       <div class="section-head">
-        <div><div class="section-kicker">02 / Registry</div><h2>Specialized micro-agents</h2></div>
+        <div><div class="section-kicker">03 / Registry</div><h2>Specialized micro-agents</h2></div>
         <a class="section-note" href="/v1/bots">GET /v1/bots ↗</a>
       </div>
       <div class="bot-grid">${botCards}</div>
@@ -297,7 +302,7 @@ export function renderHome(): Response {
 
     <section id="agent-cards">
       <div class="section-head">
-        <div><div class="section-kicker">03 / Discovery</div><h2>Agent Card contracts</h2></div>
+        <div><div class="section-kicker">04 / Discovery</div><h2>Agent Card contracts</h2></div>
         <a class="section-note" href="/.well-known/agent-card.json">.well-known/agent-card.json ↗</a>
       </div>
       <div class="agent-grid">${agentCards}</div>
@@ -305,7 +310,7 @@ export function renderHome(): Response {
 
     <section id="leaderboard" class="leaderboard" aria-live="polite">
       <div class="section-head">
-        <div><div class="section-kicker">04 / Telemetry</div><h2>Live leaderboard</h2></div>
+        <div><div class="section-kicker">05 / Telemetry</div><h2>Live leaderboard</h2></div>
         <div class="live-state"><span class="pulse"></span><span id="updated-at">Connecting to KV snapshot</span></div>
       </div>
       <div id="leaderboard-content">
@@ -327,6 +332,8 @@ export function renderHome(): Response {
   </footer>
 
   <script>
+    ${pricingScript}
+
     (function setupDemo() {
       const form = document.getElementById("demo-form");
       const input = document.getElementById("script-text");
