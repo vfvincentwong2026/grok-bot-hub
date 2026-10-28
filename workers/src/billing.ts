@@ -1,23 +1,15 @@
 import { generateApiKey, hashApiKey } from "./api-keys";
-import { getPaidPlan, getPriceIdEnv, type BillingInterval } from "./plans";
+import { getPaidPlan, getPriceIdEnv } from "./plans";
 
 export interface BillingEnv {
   LEADERBOARD_KV: KVNamespace;
   STRIPE_SECRET_KEY?: string;
-  STRIPE_PRICE_CREATOR_MONTHLY?: string;
-  STRIPE_PRICE_CREATOR_ANNUAL?: string;
-  STRIPE_PRICE_STUDIO_MONTHLY?: string;
-  STRIPE_PRICE_STUDIO_ANNUAL?: string;
+  STRIPE_PRICE_CREATOR_IDR?: string;
+  STRIPE_PRICE_STUDIO_IDR?: string;
 }
 
 export function isStripeConfigured(env: BillingEnv): boolean {
-  return Boolean(
-    env.STRIPE_SECRET_KEY &&
-      env.STRIPE_PRICE_CREATOR_MONTHLY &&
-      env.STRIPE_PRICE_CREATOR_ANNUAL &&
-      env.STRIPE_PRICE_STUDIO_MONTHLY &&
-      env.STRIPE_PRICE_STUDIO_ANNUAL,
-  );
+  return Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_CREATOR_IDR && env.STRIPE_PRICE_STUDIO_IDR);
 }
 
 export async function handleCheckout(request: Request, env: BillingEnv): Promise<Response> {
@@ -31,20 +23,16 @@ export async function handleCheckout(request: Request, env: BillingEnv): Promise
   }
 
   const plan = getPaidPlan(body?.plan);
-  const interval = body?.interval as BillingInterval;
-  if (!plan || plan.id === "free" || !["monthly", "annual"].includes(interval)) {
-    return json({ ok: false, error: "invalid_plan_or_interval" }, 400);
-  }
+  if (!plan || plan.id === "free") return json({ ok: false, error: "invalid_plan" }, 400);
   if (!isStripeConfigured(env)) return json({ ok: false, error: "billing_not_configured" }, 503);
 
-  const priceId = getStripePriceId(env, plan.id, interval);
   const origin = new URL(request.url).origin;
   const params = new URLSearchParams({
-    mode: "subscription",
-    "line_items[0][price]": priceId,
+    mode: "payment",
+    "line_items[0][price]": getStripePriceId(env, plan.id),
     "line_items[0][quantity]": "1",
     "metadata[plan]": plan.id,
-    "metadata[billing_interval]": interval,
+    "metadata[pass_days]": String(plan.durationDays),
     success_url: `${origin}/?billing=success&session_id={CHECKOUT_SESSION_ID}#pricing`,
     cancel_url: `${origin}/?billing=cancelled#pricing`,
   });
@@ -87,48 +75,61 @@ export async function handleCheckoutComplete(request: Request, env: BillingEnv):
     }
 
     const plan = getPaidPlan(session?.metadata?.plan);
-    const interval = session?.metadata?.billing_interval as BillingInterval;
-    if (!plan || plan.id === "free" || !["monthly", "annual"].includes(interval)) {
+    if (!plan || plan.id === "free" || Number(session?.metadata?.pass_days) !== plan.durationDays) {
       return json({ ok: false, error: "checkout_plan_mismatch" }, 400);
     }
-    const expectedPrice = getStripePriceId(env, plan.id, interval);
-    if (session?.line_items?.data?.[0]?.price?.id !== expectedPrice) {
+    if (session?.line_items?.data?.[0]?.price?.id !== getStripePriceId(env, plan.id)) {
       return json({ ok: false, error: "checkout_plan_mismatch" }, 400);
     }
 
-    const existing = await env.LEADERBOARD_KV.get(`billing:session:${sessionId}`, "json");
+    const existing = (await env.LEADERBOARD_KV.get(`billing:session:${sessionId}`, "json")) as any;
     if (existing) {
-      return json({ ok: true, already_issued: true, plan: plan.id, monthly_limit: plan.monthlyLimit });
+      return json({
+        ok: true,
+        already_issued: true,
+        plan: plan.id,
+        analysis_limit: plan.analysisLimit,
+        expires_at: existing.expires_at,
+      });
     }
 
     const apiKey = generateApiKey();
     const keyHash = await hashApiKey(apiKey);
-    const createdAt = new Date().toISOString();
+    const createdAt = new Date();
+    const createdAtIso = createdAt.toISOString();
+    const expiresAt = new Date(createdAt.getTime() + plan.durationDays * 86400000).toISOString();
     await env.LEADERBOARD_KV.put(
       `apikey:${keyHash}`,
       JSON.stringify({
         plan: plan.id,
         status: "active",
-        created_at: createdAt,
+        created_at: createdAtIso,
+        expires_at: expiresAt,
         stripe_customer: session.customer,
-        stripe_subscription: session.subscription,
+        stripe_payment_intent: session.payment_intent,
         stripe_session: sessionId,
       }),
     );
     await env.LEADERBOARD_KV.put(
       `billing:session:${sessionId}`,
-      JSON.stringify({ key_hash: keyHash, plan: plan.id, issued_at: createdAt }),
+      JSON.stringify({ key_hash: keyHash, plan: plan.id, issued_at: createdAtIso, expires_at: expiresAt }),
     );
 
-    return json({ ok: true, api_key: apiKey, plan: plan.id, monthly_limit: plan.monthlyLimit });
+    return json({
+      ok: true,
+      api_key: apiKey,
+      plan: plan.id,
+      analysis_limit: plan.analysisLimit,
+      expires_at: expiresAt,
+    });
   } catch {
     return json({ ok: false, error: "checkout_completion_unavailable" }, 502);
   }
 }
 
-function getStripePriceId(env: BillingEnv, plan: "creator" | "studio", interval: BillingInterval): string {
+function getStripePriceId(env: BillingEnv, plan: "creator" | "studio"): string {
   const values = env as unknown as Record<string, string | undefined>;
-  return values[getPriceIdEnv(plan, interval)]!;
+  return values[getPriceIdEnv(plan)]!;
 }
 
 function isSameOrigin(request: Request): boolean {

@@ -327,6 +327,9 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
       <a href="/health">/health</a>
       <a href="/v1/bots">/v1/bots</a>
       <a href="/v1/leaderboard">/v1/leaderboard</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/refunds">Refunds</a>
       <a href="https://github.com/vfvincentwong2026/grok-bot-hub">GitHub ↗</a>
     </div>
   </footer>

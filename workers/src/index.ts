@@ -2,6 +2,7 @@ import { handleCheckout, handleCheckoutComplete, isStripeConfigured } from "./bi
 import { handleDemoInvoke } from "./demo";
 import { renderHome } from "./home";
 import { handleLeaderboard, recordMetric } from "./leaderboard";
+import { renderLegalPage } from "./legal";
 import { handlePaidInvoke } from "./paid";
 import { checkXPolicy } from "./policy";
 import { getAgentCards, getBot, listBots } from "./registry";
@@ -18,10 +19,8 @@ interface Env {
   A2A_SHARED_SECRET: string;
   AI_GATEWAY_ID?: string;
   STRIPE_SECRET_KEY?: string;
-  STRIPE_PRICE_CREATOR_MONTHLY?: string;
-  STRIPE_PRICE_CREATOR_ANNUAL?: string;
-  STRIPE_PRICE_STUDIO_MONTHLY?: string;
-  STRIPE_PRICE_STUDIO_ANNUAL?: string;
+  STRIPE_PRICE_CREATOR_IDR?: string;
+  STRIPE_PRICE_STUDIO_IDR?: string;
 }
 
 export default {
@@ -30,6 +29,10 @@ export default {
 
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/pricing")) {
       return renderHome({ checkoutEnabled: isStripeConfigured(env) });
+    }
+
+    if (request.method === "GET" && ["/terms", "/privacy", "/refunds"].includes(url.pathname)) {
+      return renderLegalPage(url.pathname.slice(1) as "terms" | "privacy" | "refunds");
     }
 
     if (request.method === "GET" && url.pathname === "/health") {

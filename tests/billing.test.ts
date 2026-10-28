@@ -14,20 +14,18 @@ function createEnv(configured = true) {
       }),
     },
     STRIPE_SECRET_KEY: configured ? "sk_test_123" : undefined,
-    STRIPE_PRICE_CREATOR_MONTHLY: configured ? "price_creator_monthly" : undefined,
-    STRIPE_PRICE_CREATOR_ANNUAL: configured ? "price_creator_annual" : undefined,
-    STRIPE_PRICE_STUDIO_MONTHLY: configured ? "price_studio_monthly" : undefined,
-    STRIPE_PRICE_STUDIO_ANNUAL: configured ? "price_studio_annual" : undefined,
+    STRIPE_PRICE_CREATOR_IDR: configured ? "price_creator_idr" : undefined,
+    STRIPE_PRICE_STUDIO_IDR: configured ? "price_studio_idr" : undefined,
   };
   return { env, store };
 }
 
-function checkout(env: ReturnType<typeof createEnv>["env"], plan = "creator", interval = "monthly") {
+function checkout(env: ReturnType<typeof createEnv>["env"], plan = "creator") {
   return worker.fetch(
     new Request("http://localhost/v1/billing/checkout", {
       method: "POST",
       headers: { "content-type": "application/json", Origin: "http://localhost" },
-      body: JSON.stringify({ plan, interval }),
+      body: JSON.stringify({ plan }),
     }),
     env as any,
   );
@@ -39,9 +37,9 @@ function paidSession() {
     status: "complete",
     payment_status: "paid",
     customer: "cus_123",
-    subscription: "sub_123",
-    metadata: { plan: "creator", billing_interval: "monthly" },
-    line_items: { data: [{ price: { id: "price_creator_monthly" } }] },
+    payment_intent: "pi_123",
+    metadata: { plan: "creator", pass_days: "30" },
+    line_items: { data: [{ price: { id: "price_creator_idr" } }] },
   };
 }
 
@@ -61,7 +59,7 @@ describe("billing", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("creates a Stripe subscription checkout with the selected price", async () => {
+  it("creates a one-time IDR checkout for a 30-day pass", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ url: "https://checkout.stripe.com/c/pay/cs_test_123" }), {
         status: 200,
@@ -70,18 +68,18 @@ describe("billing", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const { env } = createEnv();
-    const response = await checkout(env, "studio", "annual");
+    const response = await checkout(env, "studio");
     const [, options] = fetchMock.mock.calls[0]!;
     const params = new URLSearchParams(String(options?.body));
 
     expect(response.status).toBe(200);
-    expect(params.get("mode")).toBe("subscription");
-    expect(params.get("line_items[0][price]")).toBe("price_studio_annual");
+    expect(params.get("mode")).toBe("payment");
+    expect(params.get("line_items[0][price]")).toBe("price_studio_idr");
     expect(params.get("metadata[plan]")).toBe("studio");
-    expect(params.get("metadata[billing_interval]")).toBe("annual");
+    expect(params.get("metadata[pass_days]")).toBe("30");
   });
 
-  it("verifies payment and issues a hashed API key only once", async () => {
+  it("verifies payment and issues a hashed 30-day API key only once", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(async () =>
@@ -100,17 +98,28 @@ describe("billing", () => {
     const first = await request();
     const data = await first.json();
     expect(first.status).toBe(200);
-    expect(data).toEqual(expect.objectContaining({ ok: true, plan: "creator", monthly_limit: 1000 }));
+    expect(data).toEqual(expect.objectContaining({ ok: true, plan: "creator", analysis_limit: 1000 }));
     expect(data.api_key).toMatch(/^gbh_/);
+    expect(Date.parse(data.expires_at)).toBeGreaterThan(Date.now() + 29 * 86400000);
 
     const keyEntry = [...store.entries()].find(([key]) => key.startsWith("apikey:"));
     expect(keyEntry).toBeDefined();
     expect(keyEntry![1]).not.toContain(data.api_key);
-    expect(JSON.parse(keyEntry![1])).toEqual(expect.objectContaining({ plan: "creator", status: "active" }));
+    expect(JSON.parse(keyEntry![1])).toEqual(
+      expect.objectContaining({ plan: "creator", status: "active", expires_at: data.expires_at }),
+    );
 
     const second = await request();
     const repeated = await second.json();
-    expect(repeated).toEqual({ ok: true, already_issued: true, plan: "creator", monthly_limit: 1000 });
+    expect(repeated).toEqual(
+      expect.objectContaining({
+        ok: true,
+        already_issued: true,
+        plan: "creator",
+        analysis_limit: 1000,
+        expires_at: data.expires_at,
+      }),
+    );
     expect(repeated.api_key).toBeUndefined();
   });
 });

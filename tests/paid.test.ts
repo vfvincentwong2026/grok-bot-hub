@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hashApiKey } from "../workers/src/api-keys";
 import worker from "../workers/src/index";
 
-async function createEnv() {
+async function createEnv(expiresAt = new Date(Date.now() + 30 * 86400000).toISOString()) {
   const store = new Map<string, string>();
   const counters = new Map<string, number>();
   const apiKey = "gbh_test_customer_key";
   const keyHash = await hashApiKey(apiKey);
-  store.set(`apikey:${keyHash}`, JSON.stringify({ plan: "creator", status: "active" }));
+  store.set(`apikey:${keyHash}`, JSON.stringify({ plan: "creator", status: "active", expires_at: expiresAt }));
 
   const env = {
     LEADERBOARD_KV: {
@@ -39,7 +39,7 @@ async function createEnv() {
     GROK_DEFAULT_MODEL: "grok-test",
   };
 
-  return { env, store, counters, apiKey, keyHash };
+  return { env, store, counters, apiKey, keyHash, expiresAt };
 }
 
 function invoke(env: any, apiKey: string) {
@@ -70,14 +70,16 @@ describe("POST /v1/app/invoke", () => {
     vi.unstubAllGlobals();
   });
 
-  it("authenticates the key, calls AI, and returns atomic quota usage", async () => {
-    const { env, apiKey } = await createEnv();
+  it("authenticates the key, calls AI, and returns pass quota usage", async () => {
+    const { env, apiKey, expiresAt } = await createEnv();
     const response = await invoke(env, apiKey);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.analysis).toEqual({ hook_score: 85 });
-    expect(data.usage).toEqual(expect.objectContaining({ used: 1, remaining: 999, limit: 1000 }));
+    expect(data.usage).toEqual(
+      expect.objectContaining({ used: 1, remaining: 999, limit: 1000, expires_at: expiresAt }),
+    );
     expect(fetch).toHaveBeenCalledOnce();
   });
 
@@ -90,15 +92,23 @@ describe("POST /v1/app/invoke", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("returns 429 at the monthly limit without calling AI", async () => {
+  it("rejects an expired 30-day key without calling AI", async () => {
+    const { env, apiKey } = await createEnv(new Date(Date.now() - 1000).toISOString());
+    const response = await invoke(env, apiKey);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ ok: false, error: "api_key_expired" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 at the pass limit without calling AI", async () => {
     const { env, apiKey, keyHash, counters } = await createEnv();
-    const period = new Date().toISOString().slice(0, 7);
-    counters.set(`${keyHash}:${period}`, 1000);
+    counters.set(keyHash, 1000);
     const response = await invoke(env, apiKey);
 
     expect(response.status).toBe(429);
     expect(await response.json()).toEqual(
-      expect.objectContaining({ ok: false, error: "monthly_quota_exceeded" }),
+      expect.objectContaining({ ok: false, error: "pass_quota_exceeded" }),
     );
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -107,9 +117,8 @@ describe("POST /v1/app/invoke", () => {
     const { env, apiKey, keyHash, counters } = await createEnv();
     vi.mocked(fetch).mockRejectedValue(new Error("AI unavailable"));
     const response = await invoke(env, apiKey);
-    const period = new Date().toISOString().slice(0, 7);
 
     expect(response.status).toBe(502);
-    expect(counters.get(`${keyHash}:${period}`)).toBe(0);
+    expect(counters.get(keyHash)).toBe(0);
   });
 });

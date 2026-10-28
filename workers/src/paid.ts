@@ -14,6 +14,7 @@ interface PaidEnv {
 interface ApiKeyRecord {
   plan: string;
   status: string;
+  expires_at: string;
 }
 
 const PAID_BOT_ID = "bot:drama-hook-analyzer";
@@ -25,9 +26,12 @@ export async function handlePaidInvoke(request: Request, env: PaidEnv): Promise<
   const keyHash = await hashApiKey(apiKey);
   const keyRecord = (await env.LEADERBOARD_KV.get(`apikey:${keyHash}`, "json")) as ApiKeyRecord | null;
   const plan = keyRecord?.status === "active" ? getPaidPlan(keyRecord.plan) : undefined;
-  if (!plan || plan.id === "free" || !plan.monthlyLimit) {
+  if (!plan || plan.id === "free" || !plan.analysisLimit || !keyRecord?.expires_at) {
     return json({ ok: false, error: "invalid_api_key" }, 401);
   }
+  const expiresAt = Date.parse(keyRecord.expires_at);
+  if (!Number.isFinite(expiresAt)) return json({ ok: false, error: "invalid_api_key" }, 401);
+  if (expiresAt <= Date.now()) return json({ ok: false, error: "api_key_expired" }, 401);
 
   let body: any;
   try {
@@ -40,13 +44,12 @@ export async function handlePaidInvoke(request: Request, env: PaidEnv): Promise<
     return json({ ok: false, error: "script_text_must_be_10_to_1200_characters" }, 400);
   }
 
-  const period = new Date().toISOString().slice(0, 7);
-  const quota = await updateQuota(env, `${keyHash}:${period}`, "consume", plan.monthlyLimit);
+  const quota = await updateQuota(env, keyHash, "consume", plan.analysisLimit);
   if (!quota.allowed) {
     return json({
       ok: false,
-      error: "monthly_quota_exceeded",
-      usage: { period, used: quota.used, remaining: 0, limit: plan.monthlyLimit },
+      error: "pass_quota_exceeded",
+      usage: { used: quota.used, remaining: 0, limit: plan.analysisLimit, expires_at: keyRecord.expires_at },
     }, 429);
   }
 
@@ -92,12 +95,18 @@ export async function handlePaidInvoke(request: Request, env: PaidEnv): Promise<
       ok: true,
       bot: bot.id,
       analysis,
-      usage: { latency_ms, period, used: quota.used, remaining: quota.remaining, limit: plan.monthlyLimit },
+      usage: {
+        latency_ms,
+        used: quota.used,
+        remaining: quota.remaining,
+        limit: plan.analysisLimit,
+        expires_at: keyRecord.expires_at,
+      },
     });
   } catch {
     const latency_ms = Date.now() - started;
     await Promise.allSettled([
-      updateQuota(env, `${keyHash}:${period}`, "refund", plan.monthlyLimit),
+      updateQuota(env, keyHash, "refund", plan.analysisLimit),
       recordMetric(env, bot.id, { latency_ms, ok: false }),
     ]);
     return json({ ok: false, error: "paid_ai_unavailable" }, 502);
