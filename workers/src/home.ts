@@ -160,6 +160,35 @@ export function renderHome(): Response {
     .skill-list li > span { color: var(--muted); font-size: 13px; line-height: 1.6; }
     .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
     .tag { color: #bdc8c0; font: 10px/1 var(--mono); padding: 5px 7px; background: var(--surface-2); border-radius: 3px; }
+    .demo-shell { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+    .demo-input, .demo-output { padding: 28px; }
+    .demo-input { border-right: 1px solid var(--line); }
+    .demo-input label { display: block; margin-bottom: 14px; font-size: 14px; font-weight: 650; }
+    .demo-input textarea { width: 100%; min-height: 210px; resize: vertical; padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 14px/1.7 var(--sans); }
+    .demo-input textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .demo-meta { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0 20px; color: var(--muted); font: 11px/1.5 var(--mono); }
+    .demo-input .button { cursor: pointer; }
+    .demo-input .button:disabled { cursor: wait; opacity: 0.65; }
+    .demo-limits { margin: 14px 0 0; color: var(--muted); font: 11px/1.6 var(--mono); }
+    .demo-output { min-width: 0; background: var(--surface-2); }
+    .output-label { padding-bottom: 16px; border-bottom: 1px solid var(--line); color: var(--accent); font: 11px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+    #demo-result { padding-top: 22px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .demo-placeholder { max-width: 360px; }
+    .score-row { display: flex; align-items: end; gap: 12px; margin-bottom: 22px; }
+    .score-value { color: var(--accent); font: 54px/0.9 var(--mono); letter-spacing: -0.06em; }
+    .score-label { color: var(--muted); font: 11px/1.4 var(--mono); text-transform: uppercase; }
+    .result-group { margin-top: 18px; }
+    .result-group h4 { margin: 0 0 8px; color: var(--text); font-size: 12px; }
+    .result-group ul { margin: 0; padding-left: 18px; }
+    .result-group li + li { margin-top: 6px; }
+    .audience-fit { margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--line); }
+    .audience-fit strong { display: block; margin-bottom: 6px; color: var(--text); font-size: 12px; }
+    .result-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+    .result-error { margin: 0; padding: 14px; border: 1px solid #6d3a35; border-radius: 6px; background: #251714; color: #ffb4a8; }
+    .demo-conversion { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 16px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; }
+    .demo-conversion strong { font-size: 14px; }
+    .demo-conversion p { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .demo-conversion .button { flex: none; }
     .leaderboard { margin-top: 68px; padding: 34px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
     .leaderboard .section-head { margin-bottom: 22px; }
     .live-state { display: flex; align-items: center; gap: 8px; color: var(--muted); font: 11px/1.4 var(--mono); }
@@ -174,10 +203,11 @@ export function renderHome(): Response {
     .footer-links { display: flex; flex-wrap: wrap; gap: 18px; font-family: var(--mono); }
     .footer a:hover { color: var(--accent); }
     @media (max-width: 860px) {
-      .bot-grid, .agent-grid { grid-template-columns: 1fr; }
+      .bot-grid, .agent-grid, .demo-shell { grid-template-columns: 1fr; }
       .bot-card + .bot-card { border-left: 0; border-top: 1px solid var(--line); }
       .bot-card { min-height: auto; }
       .bot-body p, .agent-card > p { min-height: auto; }
+      .demo-input { border-right: 0; border-bottom: 1px solid var(--line); }
       .nav a:not(.api-link) { display: none; }
       .hero::after { opacity: 0.45; }
     }
@@ -188,7 +218,8 @@ export function renderHome(): Response {
       .hero-copy { font-size: 15px; }
       .stats { grid-template-columns: 1fr; }
       .stat + .stat { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; }
-      .section-head, .empty-state, .footer { align-items: flex-start; flex-direction: column; }
+      .section-head, .empty-state, .footer, .demo-conversion { align-items: flex-start; flex-direction: column; }
+      .demo-input, .demo-output { padding: 22px 20px; }
       .leaderboard { padding: 24px 20px; }
       .metrics-table { min-width: 520px; }
       .table-wrap { overflow-x: auto; }
@@ -207,6 +238,7 @@ export function renderHome(): Response {
       <div>GrokBotHub <span>/ A2A Registry</span></div>
     </a>
     <nav class="nav" aria-label="Main navigation">
+      <a href="#demo">Live demo</a>
       <a href="#bots">Bots</a>
       <a href="#agent-cards">Agent Cards</a>
       <a href="#leaderboard">Leaderboard</a>
@@ -220,7 +252,7 @@ export function renderHome(): Response {
       <h1>Agents, connected.<br><span>Performance, visible.</span></h1>
       <p class="hero-copy">An edge-native registry for specialized Grok micro-agents. Discover capabilities, inspect A2A contracts, and monitor invocation performance from one Cloudflare Worker.</p>
       <div class="hero-actions">
-        <a class="button primary" href="#bots">Explore agents →</a>
+        <a class="button primary" href="#demo">Try the live demo →</a>
         <a class="button secondary" href="/.well-known/agent-card.json">Raw agent cards</a>
       </div>
     </section>
@@ -231,9 +263,33 @@ export function renderHome(): Response {
       <div class="stat"><div class="stat-value">Edge</div><div class="stat-label">Cloudflare Workers + KV</div></div>
     </div>
 
+    <section id="demo">
+      <div class="section-head">
+        <div><div class="section-kicker">01 / Live demo</div><h2>Test your opening hook</h2></div>
+        <div class="section-note">Real Grok analysis · no sign-up</div>
+      </div>
+      <div class="demo-shell">
+        <form id="demo-form" class="demo-input">
+          <label for="script-text">Paste the opening of your short drama</label>
+          <textarea id="script-text" name="script_text" minlength="10" maxlength="1200" required>“You called me a maid?” Elena ripped off her apron at the billionaire’s wedding. “Then why does your prenup name me as the real heir?”</textarea>
+          <div class="demo-meta"><span>English · Reels · US Gen Z</span><span id="character-count">0 / 1200</span></div>
+          <button id="demo-submit" class="button primary" type="submit">Analyze my hook →</button>
+          <p class="demo-limits">3 demo calls per IP/hour · 20 global/day</p>
+        </form>
+        <div class="demo-output" aria-live="polite" aria-atomic="true">
+          <div class="output-label">Grok analysis</div>
+          <div id="demo-result"><div class="demo-placeholder">Your hook score, strengths, and specific rewrites will appear here after a real API call.</div></div>
+        </div>
+      </div>
+      <div class="demo-conversion">
+        <div><strong>Need this inside your writers’ room?</strong><p>Connect your scripts, brand rules, and review workflow to a production API.</p></div>
+        <a class="button secondary" href="https://github.com/vfvincentwong2026/grok-bot-hub/issues/new?title=Short-drama%20API%20access">Request production API →</a>
+      </div>
+    </section>
+
     <section id="bots">
       <div class="section-head">
-        <div><div class="section-kicker">01 / Registry</div><h2>Specialized micro-agents</h2></div>
+        <div><div class="section-kicker">02 / Registry</div><h2>Specialized micro-agents</h2></div>
         <a class="section-note" href="/v1/bots">GET /v1/bots ↗</a>
       </div>
       <div class="bot-grid">${botCards}</div>
@@ -241,7 +297,7 @@ export function renderHome(): Response {
 
     <section id="agent-cards">
       <div class="section-head">
-        <div><div class="section-kicker">02 / Discovery</div><h2>Agent Card contracts</h2></div>
+        <div><div class="section-kicker">03 / Discovery</div><h2>Agent Card contracts</h2></div>
         <a class="section-note" href="/.well-known/agent-card.json">.well-known/agent-card.json ↗</a>
       </div>
       <div class="agent-grid">${agentCards}</div>
@@ -249,7 +305,7 @@ export function renderHome(): Response {
 
     <section id="leaderboard" class="leaderboard" aria-live="polite">
       <div class="section-head">
-        <div><div class="section-kicker">03 / Telemetry</div><h2>Live leaderboard</h2></div>
+        <div><div class="section-kicker">04 / Telemetry</div><h2>Live leaderboard</h2></div>
         <div class="live-state"><span class="pulse"></span><span id="updated-at">Connecting to KV snapshot</span></div>
       </div>
       <div id="leaderboard-content">
@@ -271,6 +327,107 @@ export function renderHome(): Response {
   </footer>
 
   <script>
+    (function setupDemo() {
+      const form = document.getElementById("demo-form");
+      const input = document.getElementById("script-text");
+      const count = document.getElementById("character-count");
+      const button = document.getElementById("demo-submit");
+      const result = document.getElementById("demo-result");
+      if (!form || !input || !count || !button || !result) return;
+
+      function updateCount() {
+        count.textContent = input.value.length + " / 1200";
+      }
+
+      function appendList(title, items) {
+        if (!Array.isArray(items) || !items.length) return;
+        const group = document.createElement("div");
+        group.className = "result-group";
+        const heading = document.createElement("h4");
+        heading.textContent = title;
+        const list = document.createElement("ul");
+        for (const item of items) {
+          const li = document.createElement("li");
+          li.textContent = String(item);
+          list.appendChild(li);
+        }
+        group.append(heading, list);
+        result.appendChild(group);
+      }
+
+      function renderAnalysis(analysis) {
+        result.replaceChildren();
+        if (analysis && typeof analysis === "object" && !Array.isArray(analysis)) {
+          const score = Number(analysis.hook_score);
+          if (Number.isFinite(score)) {
+            const row = document.createElement("div");
+            row.className = "score-row";
+            const value = document.createElement("div");
+            value.className = "score-value";
+            value.textContent = String(score);
+            const label = document.createElement("div");
+            label.className = "score-label";
+            label.textContent = "Hook score / 100";
+            row.append(value, label);
+            result.appendChild(row);
+          }
+          appendList("What works", analysis.strengths);
+          appendList("Make it stronger", analysis.suggestions);
+          if (analysis.audience_fit) {
+            const fit = document.createElement("p");
+            fit.className = "audience-fit";
+            const label = document.createElement("strong");
+            label.textContent = "Audience fit";
+            fit.append(label, document.createTextNode(String(analysis.audience_fit)));
+            result.appendChild(fit);
+          }
+          if (result.childElementCount) return;
+        }
+        const text = document.createElement("pre");
+        text.className = "result-text";
+        text.textContent = typeof analysis === "string" ? analysis : JSON.stringify(analysis, null, 2);
+        result.appendChild(text);
+      }
+
+      updateCount();
+      input.addEventListener("input", updateCount);
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        button.disabled = true;
+        button.textContent = "Analyzing with Grok…";
+        form.setAttribute("aria-busy", "true");
+        result.textContent = "Reading your opening and scoring the first three seconds…";
+        try {
+          const response = await fetch("/v1/demo/invoke", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ script_text: input.value }),
+          });
+          const data = await response.json().catch(function () { return null; });
+          if (!response.ok || !data?.ok) {
+            const messages = {
+              400: "Enter between 10 and 1200 characters.",
+              403: "Please run the demo from this page.",
+              429: "Demo limit reached. Try again later or request production access.",
+              502: "Grok is temporarily unavailable. Please try again.",
+            };
+            throw new Error(messages[response.status] || data?.error || "The demo could not be completed.");
+          }
+          renderAnalysis(data.analysis);
+        } catch (error) {
+          const message = document.createElement("p");
+          message.className = "result-error";
+          message.textContent = error instanceof Error ? error.message : "The demo could not be completed.";
+          result.replaceChildren(message);
+        } finally {
+          button.disabled = false;
+          button.textContent = "Analyze my hook →";
+          form.removeAttribute("aria-busy");
+        }
+      });
+    })();
+
     (async function loadLeaderboard() {
       const container = document.getElementById("leaderboard-content");
       const updatedAt = document.getElementById("updated-at");

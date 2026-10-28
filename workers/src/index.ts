@@ -1,3 +1,4 @@
+import { handleDemoInvoke } from "./demo";
 import { renderHome } from "./home";
 import { handleLeaderboard, recordMetric } from "./leaderboard";
 import { checkXPolicy } from "./policy";
@@ -35,6 +36,10 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/.well-known/agent-card.json") {
       return json({ agents: getAgentCards() });
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/demo/invoke") {
+      return handleDemoInvoke(request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/a2a/invoke") {
