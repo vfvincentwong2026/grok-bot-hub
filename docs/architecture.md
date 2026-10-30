@@ -1,24 +1,27 @@
 # Architecture
 
-## 三层结构
+## Current components
 
-1. **Edge Hub（`workers/src`）**：A2A 路由、鉴权、X 合规守卫、AI Gateway 调用。
-2. **Bot Blueprints（`bots/`）**：每个 bot 暴露一个 `BotBlueprint`，声明 skills 与 prompt 构建逻辑。
-3. **Protocol（`a2a/`）**：`schema.json` 定义请求/响应与 agent card 契约。
+1. **Cloudflare Worker (`workers/src`)**: HTTP routes, authentication, input validation, xAI Responses API calls, demo throttling, paid quota handling, billing, and HTML pages.
+2. **Bot blueprints (`bots/`)**: localized discovery metadata and prompt builders. Only Drama Hook and sample-only Viral Radar are publicly registered.
+3. **Cloudflare KV**: API-key hashes and records, metrics, demo counters, and optional leaderboard snapshots.
+4. **UsageCounter Durable Object**: atomic paid-quota consumption and refunds.
+5. **Stripe Checkout (optional)**: one-time IDR 30-day passes when explicitly configured.
 
-## 调用链
-client → POST /v1/a2a/invoke
-→ auth (Bearer A2A_SHARED_SECRET)
-→ checkXPolicy()
-→ registry.getBot(target_bot)
-→ bot.buildPrompt(payload)
-→ env.AI.run(xai/${model}, { gateway })
-→ recordMetric() → LEADERBOARD_KV
+## Public demo flow
 
-text
+`POST /v1/demo/invoke` → same-origin check → script/options validation → best-effort KV reservation → localized `buildPrompt()` → xAI Responses API → metrics + attribution.
 
-## 为什么用 AI Gateway
+AI failures release the reserved demo counters. KV throttling is best-effort, not an atomic distributed rate limiter.
 
-- 统一 xAI 出口、缓存与可观测性
-- 便于后续切换 provider 或加限流
-- 避免在 Worker 内直连时泄露密钥到日志
+## Paid flow
+
+`POST /v1/app/invoke` → hash API key → active plan + expiry check → script/options validation → atomic quota reservation → localized `buildPrompt()` → xAI Responses API → metrics + attribution.
+
+AI failures refund the reserved paid quota through the Durable Object.
+
+## Legacy compatibility flow
+
+`POST /v1/a2a/invoke` → shared-secret authentication → custom `A2A-v1` validation → policy guard → registry → xAI Responses API → metrics + attribution + `Deprecation: true`.
+
+This custom route is not the official A2A protocol. MCP and Cloudflare AI Gateway are not currently used. The scheduled handler is a safe heartbeat only; it does not fabricate or publish leaderboard snapshots.

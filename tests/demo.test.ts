@@ -22,7 +22,11 @@ function createEnv() {
   return { env, store };
 }
 
-function invokeDemo(env: ReturnType<typeof createEnv>["env"], scriptText: string) {
+function invokeDemo(
+  env: ReturnType<typeof createEnv>["env"],
+  scriptText: string,
+  payload: Record<string, unknown> = {},
+) {
   return worker.fetch(
     new Request("http://localhost/v1/demo/invoke", {
       method: "POST",
@@ -31,7 +35,7 @@ function invokeDemo(env: ReturnType<typeof createEnv>["env"], scriptText: string
         Origin: "http://localhost",
         "CF-Connecting-IP": "203.0.113.10",
       },
-      body: JSON.stringify({ script_text: scriptText }),
+      body: JSON.stringify({ script_text: scriptText, ...payload }),
     }),
     env as any,
   );
@@ -85,6 +89,7 @@ describe("POST /v1/demo/invoke", () => {
         ok: true,
         bot: "bot:drama-hook-analyzer",
         analysis: expect.objectContaining({ hook_score: 88 }),
+        attribution: "AI-generated with Grok. Review before publishing.",
       }),
     );
     expect(fetch).toHaveBeenCalledOnce();
@@ -92,6 +97,37 @@ describe("POST /v1/demo/invoke", () => {
     expect(JSON.parse(String(options?.body))).toEqual(
       expect.objectContaining({ model: "grok-test", max_output_tokens: 500 }),
     );
+  });
+
+  it("auto-detects Indonesian and sends ID defaults to the model", async () => {
+    const { env } = createEnv();
+    const script = "Kamu bilang aku hanya seorang pelayan, tetapi aku adalah pewaris yang sebenarnya.";
+    const response = await invokeDemo(env, script, { platform: "tiktok" });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.options).toEqual({
+      input_language: "id",
+      target_audience: "ID_GenZ",
+      output_language: "id",
+      platform: "tiktok",
+    });
+    const [, request] = vi.mocked(fetch).mock.calls[0]!;
+    const aiBody = JSON.parse(String(request?.body));
+    expect(JSON.parse(aiBody.input[1].content)).toEqual(expect.objectContaining(data.options));
+  });
+
+  it("rejects invalid option enums without calling AI", async () => {
+    const { env } = createEnv();
+    const response = await invokeDemo(env, validScript, { output_language: "EN" });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "invalid_analysis_options",
+      field: "output_language",
+    });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("rejects short input without calling AI", async () => {
@@ -104,6 +140,17 @@ describe("POST /v1/demo/invoke", () => {
       error: "script_text_must_be_10_to_1200_characters",
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("releases reserved demo capacity when AI fails", async () => {
+    const { env, store } = createEnv();
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("AI unavailable"));
+    const response = await invokeDemo(env, validScript);
+
+    expect(response.status).toBe(502);
+    const demoCounters = [...store.entries()].filter(([key]) => key.startsWith("demo:"));
+    expect(demoCounters).toHaveLength(2);
+    expect(demoCounters.map(([, value]) => value)).toEqual(["0", "0"]);
   });
 
   it("rate limits the fourth request from the same IP", async () => {

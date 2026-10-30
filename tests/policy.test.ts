@@ -5,12 +5,12 @@ describe("checkXPolicy", () => {
   it("blocks unsolicited DM", () => {
     const r = checkXPolicy({ payload: { action: "dm", user_initiated: false } });
     expect(r.allowed).toBe(false);
-    expect(r.reason).toContain("user-initiated");
+    expect(r.reason).toContain("Automated DM/reply");
   });
 
-  it("allows user-initiated DM", () => {
+  it("rejects DM even when the caller self-reports user initiation", () => {
     const r = checkXPolicy({ payload: { action: "dm", user_initiated: true } });
-    expect(r.allowed).toBe(true);
+    expect(r.allowed).toBe(false);
   });
 
   it("blocks cross-account identical content", () => {
@@ -26,6 +26,11 @@ describe("checkXPolicy", () => {
   it("blocks bulk keywords", () => {
     const r = checkXPolicy({ payload: { script_text: "mass dm everyone now" } });
     expect(r.allowed).toBe(false);
+  });
+
+  it("does not block words that merely contain a keyword", () => {
+    const r = checkXPolicy({ payload: { script_text: "A massive reveal at the wedding" } });
+    expect(r.allowed).toBe(true);
   });
 
   it("allows clean analyze request", () => {

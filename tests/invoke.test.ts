@@ -95,6 +95,8 @@ describe("POST /v1/a2a/invoke", () => {
     const response = await invoke(env, validRequest);
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Deprecation")).toBe("true");
+    expect((await response.json()).attribution).toBe("AI-generated with Grok. Review before publishing.");
     expect(fetch).toHaveBeenCalledOnce();
     const [url, options] = vi.mocked(fetch).mock.calls[0]!;
     expect(url).toBe("https://api.x.ai/v1/responses");

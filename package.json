@@ -2,7 +2,7 @@
   "name": "grok-bot-hub",
   "version": "0.1.0",
   "private": true,
-  "description": "A2A registry and leaderboard for Grok bots on Cloudflare Workers",
+  "description": "Multilingual short-drama hook analysis with Grok on Cloudflare Workers",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
+    "check:docs": "node scripts/check-docs.mjs",
     "format": "prettier --write \"workers/src/**/*.ts\"",
     "types": "wrangler types"
   },
@@ -20,7 +21,7 @@
     "prettier": "^3.0.0",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^3.0.0",
-    "wrangler": "^4.0.0"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.0"
   }
 }

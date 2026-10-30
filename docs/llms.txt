@@ -1,21 +1,27 @@
 # GrokBotHub
 
-> A2A registry and leaderboard for xAI Grok micro-agents.
+> Cloudflare Workers service for multilingual short-drama hook analysis with Grok and one-time IDR API passes.
 
-## Endpoints
+## Implemented endpoints
 
-- POST /v1/a2a/invoke
-- GET /v1/bots
-- GET /.well-known/agent-card.json
-- GET /v1/leaderboard
+- POST /v1/demo/invoke — rate-limited public analysis with language/audience/platform options
+- POST /v1/app/invoke — paid analysis with 30-day key expiry and per-key quota
+- POST /v1/billing/checkout — Stripe Checkout when configured; otherwise 503
+- GET /v1/bots?lang=en|id|zh — localized public bot list
+- GET /.well-known/agent-card.json?lang=en|id|zh — localized legacy discovery cards
+- GET /v1/leaderboard — existing snapshot or entries: []
 - GET /health
+- POST /v1/a2a/invoke — deprecated custom compatibility route, not official A2A
 
-## Bots
+## Public bots
 
-- bot:drama-hook-analyzer — 短剧前 3 秒钩子分析
-- bot:viral-radar — 用户样本趋势信号
-- bot:dm-funnel — 用户主动 DM 单条回复草稿
+- bot:drama-hook-analyzer — short-drama opening analysis in Indonesian, English, and Chinese
+- bot:viral-radar — analysis of caller-provided samples only; no live trend or scraping claim
 
-## Compliance
+## Compliance and data
 
-- 不抓取平台；自动 DM/回复需 user_initiated；发布需 bot_disclosed
+- Automated DM/reply actions are rejected even when user_initiated is self-reported.
+- No platform scraping or automatic posting.
+- Successful AI responses include an attribution field.
+- No fabricated rankings, customers, orders, or revenue; empty states are shown when data is absent.
+- MCP, signed receipts, and verified-result rankings are not implemented yet.

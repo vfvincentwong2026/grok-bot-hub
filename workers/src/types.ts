@@ -1,18 +1,22 @@
+export type Language = "en" | "id" | "zh";
+export type LocalizedText = Record<Language, string>;
+export type Text = string | LocalizedText;
+
 export interface BotSkill {
   id: string;
   name: string;
-  description: string;
+  description: Text;
   inputSchema: Record<string, unknown>;
 }
 
 export interface AgentCard {
   name: string;
-  description: string;
+  description: Text;
   version: string;
   skills: Array<{
     id: string;
     name: string;
-    description: string;
+    description: Text;
     tags?: string[];
     inputSchema?: Record<string, unknown>;
   }>;
@@ -21,8 +25,8 @@ export interface AgentCard {
 export interface BotBlueprint {
   id: string;
   name: string;
-  description: string;
-  agentCard: AgentCard;          // 新增：对齐 A2A agentCard
+  description: Text;
+  agentCard: AgentCard;
   skills: BotSkill[];
   buildPrompt: (payload: Record<string, unknown>) => {
     system: string;

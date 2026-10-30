@@ -1,3 +1,5 @@
+import { AnalysisOptionsError, resolveAnalysisOptions } from "./analysis-options";
+import { AI_ATTRIBUTION } from "./attribution";
 import { recordMetric } from "./leaderboard";
 import { getBot } from "./registry";
 
@@ -30,20 +32,24 @@ export async function handleDemoInvoke(request: Request, env: DemoEnv): Promise<
     return json({ ok: false, error: "script_text_must_be_10_to_1200_characters" }, 400);
   }
 
-  if (!(await withinDemoLimits(request, env))) {
-    return json({ ok: false, error: "demo_rate_limited" }, 429);
+  let options;
+  try {
+    options = resolveAnalysisOptions({ ...body, script_text: scriptText });
+  } catch (error) {
+    if (error instanceof AnalysisOptionsError) {
+      return json({ ok: false, error: "invalid_analysis_options", field: error.field }, 400);
+    }
+    throw error;
   }
+
+  const reservation = await reserveDemoLimits(request, env);
+  if (!reservation) return json({ ok: false, error: "demo_rate_limited" }, 429);
 
   const bot = getBot(DEMO_BOT_ID)!;
   const started = Date.now();
 
   try {
-    const { system, user } = bot.buildPrompt({
-      script_text: scriptText,
-      target_audience: "US_GenZ",
-      output_language: "EN",
-      platform: "reels",
-    });
+    const { system, user } = bot.buildPrompt({ script_text: scriptText, ...options });
     const response = await fetch(`${env.XAI_BASE_URL}/responses`, {
       method: "POST",
       headers: {
@@ -74,23 +80,37 @@ export async function handleDemoInvoke(request: Request, env: DemoEnv): Promise<
       // Keep the plain-text response when the model does not return valid JSON.
     }
 
-    return json({ ok: true, bot: bot.id, analysis, usage: { latency_ms } });
+    return json({ ok: true, bot: bot.id, analysis, attribution: AI_ATTRIBUTION, options, usage: { latency_ms } });
   } catch {
     const latency_ms = Date.now() - started;
-    await recordMetric(env, bot.id, { latency_ms, ok: false });
+    await Promise.allSettled([
+      ...reservation.map((entry) => decrement(env, entry)),
+      recordMetric(env, bot.id, { latency_ms, ok: false }),
+    ]);
     return json({ ok: false, error: "demo_ai_unavailable" }, 502);
   }
 }
 
-async function withinDemoLimits(request: Request, env: DemoEnv): Promise<boolean> {
+interface DemoReservation {
+  key: string;
+  ttl: number;
+}
+
+async function reserveDemoLimits(request: Request, env: DemoEnv): Promise<DemoReservation[] | null> {
   const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
   const ipHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 16);
   const day = new Date().toISOString().slice(0, 10);
+  const ipReservation = { key: `demo:ip:${ipHash}`, ttl: 3600 };
+  const globalReservation = { key: `demo:global:${day}`, ttl: 86400 };
 
   // KV provides best-effort throttling, not atomic Durable Object counters.
-  if (!(await increment(env, `demo:ip:${ipHash}`, HOURLY_IP_LIMIT, 3600))) return false;
-  return increment(env, `demo:global:${day}`, DAILY_GLOBAL_LIMIT, 86400);
+  if (!(await increment(env, ipReservation.key, HOURLY_IP_LIMIT, ipReservation.ttl))) return null;
+  if (!(await increment(env, globalReservation.key, DAILY_GLOBAL_LIMIT, globalReservation.ttl))) {
+    await decrement(env, ipReservation);
+    return null;
+  }
+  return [ipReservation, globalReservation];
 }
 
 async function increment(env: DemoEnv, key: string, limit: number, ttl: number): Promise<boolean> {
@@ -98,6 +118,13 @@ async function increment(env: DemoEnv, key: string, limit: number, ttl: number):
   if (current >= limit) return false;
   await env.LEADERBOARD_KV.put(key, String(current + 1), { expirationTtl: ttl });
   return true;
+}
+
+async function decrement(env: DemoEnv, reservation: DemoReservation): Promise<void> {
+  const current = Number((await env.LEADERBOARD_KV.get(reservation.key)) ?? "0");
+  await env.LEADERBOARD_KV.put(reservation.key, String(Math.max(0, current - 1)), {
+    expirationTtl: reservation.ttl,
+  });
 }
 
 function extractOutputText(response: any): string {

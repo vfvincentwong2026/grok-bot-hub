@@ -42,12 +42,15 @@ async function createEnv(expiresAt = new Date(Date.now() + 30 * 86400000).toISOS
   return { env, store, counters, apiKey, keyHash, expiresAt };
 }
 
-function invoke(env: any, apiKey: string) {
+function invoke(env: any, apiKey: string, payload: Record<string, unknown> = {}) {
   return worker.fetch(
     new Request("http://localhost/v1/app/invoke", {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ script_text: "The maid reveals she is the true heir at the wedding." }),
+      body: JSON.stringify({
+        script_text: "The maid reveals she is the true heir at the wedding.",
+        ...payload,
+      }),
     }),
     env,
   );
@@ -77,10 +80,33 @@ describe("POST /v1/app/invoke", () => {
 
     expect(response.status).toBe(200);
     expect(data.analysis).toEqual({ hook_score: 85 });
+    expect(data.attribution).toBe("AI-generated with Grok. Review before publishing.");
     expect(data.usage).toEqual(
       expect.objectContaining({ used: 1, remaining: 999, limit: 1000, expires_at: expiresAt }),
     );
     expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("passes explicit localization options to the model", async () => {
+    const { env, apiKey } = await createEnv();
+    const response = await invoke(env, apiKey, {
+      input_language: "en",
+      target_audience: "ID_Millennial",
+      output_language: "id",
+      platform: "youtube_shorts",
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.options).toEqual({
+      input_language: "en",
+      target_audience: "ID_Millennial",
+      output_language: "id",
+      platform: "youtube_shorts",
+    });
+    const [, request] = vi.mocked(fetch).mock.calls[0]!;
+    const aiBody = JSON.parse(String(request?.body));
+    expect(JSON.parse(aiBody.input[1].content)).toEqual(expect.objectContaining(data.options));
   });
 
   it("rejects an unknown API key without calling AI", async () => {

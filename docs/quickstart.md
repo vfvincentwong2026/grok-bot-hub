@@ -1,64 +1,73 @@
 # Quick Start
 
-## Prereq
+## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - Wrangler CLI
-- xAI API key
-- Cloudflare 账号
+- xAI API key for real analysis
+- Cloudflare account for deployment
 
-## 步骤
-
-### 1. 克隆仓库并安装依赖
+## 1. Clone and install
 
 ```bash
 git clone https://github.com/vfvincentwong2026/grok-bot-hub.git
 cd grok-bot-hub
-npm install
+npm ci
+cp .dev.vars.example .dev.vars
 ```
 
-### 2. 创建 KV namespace
+Fill `.dev.vars` locally. Never commit real secrets.
+
+## 2. Configure a local or new KV namespace
+
+For an existing deployment, keep the binding already in `wrangler.toml`. For a new deployment only:
 
 ```bash
-wrangler kv namespace create LEADERBOARD_KV
+npx wrangler kv namespace create LEADERBOARD_KV
 ```
 
-将命令返回的 namespace ID 填入 `wrangler.toml` 的 `kv_namespaces.id`。
+Copy the returned namespace ID into `wrangler.toml`.
 
-### 3. 设置 xAI API key
+## 3. Configure production secrets when approved
 
 ```bash
-wrangler secret put XAI_API_KEY
+npx wrangler secret put XAI_API_KEY
+npx wrangler secret put A2A_SHARED_SECRET
 ```
 
-### 4. 设置 A2A 共享密钥
+Stripe remains disabled until its secret and both IDR Price IDs are configured and tested.
 
-```bash
-wrangler secret put A2A_SHARED_SECRET
-```
-
-### 5. 启动本地开发服务
+## 4. Run locally
 
 ```bash
 npm run dev -- --test-scheduled
 ```
 
-### 6. 检查端点
-
 ```bash
 curl http://localhost:8787/health
-curl http://localhost:8787/v1/bots
+curl "http://localhost:8787/v1/bots?lang=id"
 curl http://localhost:8787/v1/leaderboard
 ```
 
-### 7. 触发本地定时快照
+The optional local scheduled request triggers a heartbeat only; it does not create a ranking snapshot:
 
 ```bash
 curl http://localhost:8787/cdn-cgi/local/scheduled
 ```
 
-### 8. 部署
+## 5. Verify before a pull request
+
+```bash
+npm audit --audit-level=high
+npm run lint
+npx tsc --noEmit
+npm run test
+```
+
+## 6. Deploy only with Owner approval
 
 ```bash
 npm run deploy
 ```
+
+Worker renames, real payment activation, Marketplace submission, and production deployment require Vincent's written approval.

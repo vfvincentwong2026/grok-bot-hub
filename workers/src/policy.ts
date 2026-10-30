@@ -3,22 +3,20 @@ export interface PolicyResult {
   reason?: string;
 }
 
-const BULK_KEYWORDS = ["bulk", "mass", "everyone", "all followers"];
+const BULK_PATTERNS = [/\bbulk\b/iu, /\bmass\b/iu, /\beveryone\b/iu, /\ball followers\b/iu];
 
 export function checkXPolicy(body: any): PolicyResult {
   const payload = body?.payload ?? {};
 
-  // 1. Reject unsolicited DM / reply blasts
+  // Automated DM/reply actions are disabled. A caller cannot authorize them by self-reporting.
   if (payload.action === "dm" || payload.action === "reply") {
-    if (payload.user_initiated !== true) {
-      return {
-        allowed: false,
-        reason: "X requires user-initiated interaction for automated replies/DMs.",
-      };
-    }
+    return {
+      allowed: false,
+      reason: "Automated DM/reply actions are disabled; only human-reviewed drafts are allowed.",
+    };
   }
 
-  // 2. Reject cross-account identical content intent
+  // Reject cross-account identical content intent.
   if (payload.cross_account === true) {
     return {
       allowed: false,
@@ -26,13 +24,13 @@ export function checkXPolicy(body: any): PolicyResult {
     };
   }
 
-  // 3. Reject bulk / spammy intent
+  // Match complete words/phrases so words such as "massive" are not false positives.
   const text = String(payload.script_text ?? payload.text ?? "").toLowerCase();
-  if (BULK_KEYWORDS.some((k) => text.includes(k))) {
+  if (BULK_PATTERNS.some((pattern) => pattern.test(text))) {
     return { allowed: false, reason: "Bulk/aggressive targeting is prohibited by X automation rules." };
   }
 
-  // 4. Require bot disclosure flag for any posting action
+  // Require bot disclosure flag for any posting action.
   if ((payload.action === "post" || payload.action === "quote") && payload.bot_disclosed !== true) {
     return {
       allowed: false,

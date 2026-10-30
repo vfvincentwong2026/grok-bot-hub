@@ -3,17 +3,28 @@ import type { BotBlueprint } from "../../workers/src/types";
 export const viralRadar: BotBlueprint = {
   id: "bot:viral-radar",
   name: "Viral Radar",
-  description:
-    "基于给定关键词/样本，输出 X 与短视频平台的趋势信号与内容机会。",
+  description: {
+    en: "Analyzes user-provided samples for themes, sentiment, and content opportunities; never scrapes platforms.",
+    id: "Menganalisis sampel dari pengguna untuk tema, sentimen, dan peluang konten; tidak mengambil data dari platform.",
+    zh: "仅分析用户提供的样本，提炼主题、情绪与内容机会，不抓取任何平台。",
+  },
   agentCard: {
     name: "Viral Radar",
-    description: "基于给定关键词/样本，输出 X 与短视频平台的趋势信号与内容机会。",
+    description: {
+      en: "Analyzes user-provided samples for themes, sentiment, and content opportunities; never scrapes platforms.",
+      id: "Menganalisis sampel dari pengguna untuk tema, sentimen, dan peluang konten; tidak mengambil data dari platform.",
+      zh: "仅分析用户提供的样本，提炼主题、情绪与内容机会，不抓取任何平台。",
+    },
     version: "0.1.0",
     skills: [
       {
         id: "scan_trends",
         name: "Scan Trend Signals",
-        description: "从提供的样本文本中提炼趋势主题、情绪极性与内容机会。",
+        description: {
+          en: "Extracts themes, sentiment, and content opportunities from supplied sample text.",
+          id: "Mengekstrak tema, sentimen, dan peluang konten dari teks sampel yang diberikan.",
+          zh: "从提供的样本文本中提炼趋势主题、情绪极性与内容机会。",
+        },
         tags: ["trends", "content-intelligence"],
       },
     ],
@@ -22,7 +33,11 @@ export const viralRadar: BotBlueprint = {
     {
       id: "scan_trends",
       name: "Scan Trend Signals",
-      description: "从提供的样本文本中提炼趋势主题、情绪极性与内容机会。",
+      description: {
+        en: "Extracts themes, sentiment, and content opportunities from supplied sample text.",
+        id: "Mengekstrak tema, sentimen, dan peluang konten dari teks sampel yang diberikan.",
+        zh: "从提供的样本文本中提炼趋势主题、情绪极性与内容机会。",
+      },
       inputSchema: {
         type: "object",
         required: ["samples"],

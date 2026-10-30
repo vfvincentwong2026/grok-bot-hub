@@ -54,8 +54,8 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="GrokBotHub — an edge-native A2A registry and live leaderboard for xAI Grok micro-agents.">
-  <title>GrokBotHub — Agent Registry</title>
+  <meta name="description" content="GrokBotHub — multilingual short-drama hook analysis with Grok on Cloudflare Workers.">
+  <title>GrokBotHub — Short-Drama Hook Analysis</title>
   <style>
     :root {
       color-scheme: dark;
@@ -141,7 +141,7 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
     .section-kicker { color: var(--accent); font: 11px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
     h2 { margin: 10px 0 0; font-size: 30px; letter-spacing: -0.04em; }
     .section-note { color: var(--muted); font: 12px/1.5 var(--mono); }
-    .bot-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .bot-grid { display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
     .bot-card { min-height: 284px; background: var(--surface); }
     .bot-card + .bot-card { border-left: 1px solid var(--line); }
     .bot-index { padding: 20px 24px; border-bottom: 1px solid var(--line); color: var(--muted); font: 11px/1 var(--mono); }
@@ -151,7 +151,7 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
     .bot-body p, .agent-card > p { min-height: 68px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
     .skill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
     .skill-row code { padding: 6px 8px; background: var(--accent-dark); color: var(--accent); border-radius: 4px; font-size: 11px; }
-    .agent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .agent-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
     .agent-card { padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
     .agent-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .version { flex: none; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font: 11px/1 var(--mono); }
@@ -164,9 +164,13 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
     .demo-shell { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
     .demo-input, .demo-output { padding: 28px; }
     .demo-input { border-right: 1px solid var(--line); }
-    .demo-input label { display: block; margin-bottom: 14px; font-size: 14px; font-weight: 650; }
+    .demo-input > label { display: block; margin-bottom: 14px; font-size: 14px; font-weight: 650; }
     .demo-input textarea { width: 100%; min-height: 210px; resize: vertical; padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 14px/1.7 var(--sans); }
     .demo-input textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .demo-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .demo-options label { display: grid; gap: 7px; color: var(--muted); font: 11px/1.4 var(--mono); }
+    .demo-options select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--text); font: 12px/1.4 var(--sans); }
+    .demo-options select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     .demo-meta { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0 20px; color: var(--muted); font: 11px/1.5 var(--mono); }
     .demo-input .button { cursor: pointer; }
     .demo-input .button:disabled { cursor: wait; opacity: 0.65; }
@@ -185,6 +189,7 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
     .audience-fit { margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--line); }
     .audience-fit strong { display: block; margin-bottom: 6px; color: var(--text); font-size: 12px; }
     .result-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+    .ai-attribution { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font: 11px/1.6 var(--mono); }
     .result-error { margin: 0; padding: 14px; border: 1px solid #6d3a35; border-radius: 6px; background: #251714; color: #ffb4a8; }
     .demo-conversion { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 16px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; }
     .demo-conversion strong { font-size: 14px; }
@@ -215,7 +220,7 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
     @media (max-width: 560px) {
       .shell { width: min(100% - 28px, 1180px); }
       .hero { padding: 58px 0 44px; }
-      h1 { font-size: 48px; }
+      h1 { font-size: clamp(34px, 10.8vw, 44px); overflow-wrap: break-word; }
       .hero-copy { font-size: 15px; }
       .stats { grid-template-columns: 1fr; }
       .stat + .stat { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; }
@@ -237,14 +242,14 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
         <path d="m7 8.5 9 5.4 9-5.4M16 14v10M11.5 26.5 16 29l4.5-2.5" stroke="currentColor" stroke-width="1.5"/>
         <circle cx="16" cy="14" r="2.5" fill="currentColor"/>
       </svg>
-      <div>GrokBotHub <span>/ A2A Registry</span></div>
+      <div>GrokBotHub <span>/ Creator Tools</span></div>
     </a>
     <nav class="nav" aria-label="Main navigation">
       <a href="#demo">Live demo</a>
       <a href="#pricing">Pricing</a>
       <a href="#bots">Bots</a>
-      <a href="#agent-cards">Agent Cards</a>
-      <a href="#leaderboard">Leaderboard</a>
+      <a href="#agent-cards">Discovery</a>
+      <a href="#leaderboard">Telemetry</a>
       <a class="api-link" href="/health">API STATUS ↗</a>
     </nav>
   </header>
@@ -252,17 +257,17 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
   <main class="shell">
     <section class="hero">
       <div class="eyebrow"><span class="pulse"></span> Edge network · operational</div>
-      <h1>Agents, connected.<br><span>Performance, visible.</span></h1>
-      <p class="hero-copy">An edge-native registry for specialized Grok micro-agents. Discover capabilities, inspect A2A contracts, and monitor invocation performance from one Cloudflare Worker.</p>
+      <h1>Opening hooks, analyzed.<br><span>In your language.</span></h1>
+      <p class="hero-copy">Analyze short-drama openings with Grok in Indonesian, English, or Chinese. Choose the audience and platform, test a real API call, and review AI-generated suggestions before publishing.</p>
       <div class="hero-actions">
         <a class="button primary" href="#demo">Try the live demo →</a>
-        <a class="button secondary" href="/.well-known/agent-card.json">Raw agent cards</a>
+        <a class="button secondary" href="/.well-known/agent-card.json">Raw discovery cards</a>
       </div>
     </section>
 
-    <div class="stats" aria-label="Registry summary">
-      <div class="stat"><div class="stat-value">03</div><div class="stat-label">Registered Grok bots</div></div>
-      <div class="stat"><div class="stat-value">A2A-v1</div><div class="stat-label">Standard invocation protocol</div></div>
+    <div class="stats" aria-label="Service summary">
+      <div class="stat"><div class="stat-value">${String(bots.length).padStart(2, "0")}</div><div class="stat-label">Public analysis blueprints</div></div>
+      <div class="stat"><div class="stat-value">id / en / zh</div><div class="stat-label">Localized discovery and output</div></div>
       <div class="stat"><div class="stat-value">Edge</div><div class="stat-label">Cloudflare Workers + KV</div></div>
     </div>
 
@@ -275,7 +280,44 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
         <form id="demo-form" class="demo-input">
           <label for="script-text">Paste the opening of your short drama</label>
           <textarea id="script-text" name="script_text" minlength="10" maxlength="1200" required>“You called me a maid?” Elena ripped off her apron at the billionaire’s wedding. “Then why does your prenup name me as the real heir?”</textarea>
-          <div class="demo-meta"><span>English · Reels · US Gen Z</span><span id="character-count">0 / 1200</span></div>
+          <div class="demo-options" aria-label="Analysis options">
+            <label>Input language
+              <select id="input-language" name="input_language">
+                <option value="auto" selected>Auto detect</option>
+                <option value="id">Bahasa Indonesia</option>
+                <option value="en">English</option>
+                <option value="zh">中文</option>
+              </select>
+            </label>
+            <label>Target audience
+              <select id="target-audience" name="target_audience">
+                <option value="" selected>Auto from language</option>
+                <option value="ID_GenZ">Indonesia · Gen Z</option>
+                <option value="ID_Millennial">Indonesia · Millennial</option>
+                <option value="US_GenZ">US · Gen Z</option>
+                <option value="CN_GenZ">China · Gen Z</option>
+              </select>
+            </label>
+            <label>Platform
+              <select id="demo-platform" name="platform">
+                <option value="tiktok">TikTok</option>
+                <option value="reels" selected>Reels</option>
+                <option value="youtube_shorts">YouTube Shorts</option>
+                <option value="dramabox">DramaBox</option>
+                <option value="shortmax">ShortMax</option>
+                <option value="reelshort">ReelShort</option>
+              </select>
+            </label>
+            <label>Output language
+              <select id="output-language" name="output_language">
+                <option value="" selected>Match input</option>
+                <option value="id">Bahasa Indonesia</option>
+                <option value="en">English</option>
+                <option value="zh">中文</option>
+              </select>
+            </label>
+          </div>
+          <div class="demo-meta"><span>Indonesian input defaults to ID Gen Z</span><span id="character-count">0 / 1200</span></div>
           <button id="demo-submit" class="button primary" type="submit">Analyze my hook →</button>
           <p class="demo-limits">3 demo calls per IP/hour · 20 global/day</p>
         </form>
@@ -294,7 +336,7 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
 
     <section id="bots">
       <div class="section-head">
-        <div><div class="section-kicker">03 / Registry</div><h2>Specialized micro-agents</h2></div>
+        <div><div class="section-kicker">03 / Registry</div><h2>Public analysis blueprints</h2></div>
         <a class="section-note" href="/v1/bots">GET /v1/bots ↗</a>
       </div>
       <div class="bot-grid">${botCards}</div>
@@ -302,7 +344,7 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
 
     <section id="agent-cards">
       <div class="section-head">
-        <div><div class="section-kicker">04 / Discovery</div><h2>Agent Card contracts</h2></div>
+        <div><div class="section-kicker">04 / Discovery</div><h2>Legacy discovery cards</h2></div>
         <a class="section-note" href="/.well-known/agent-card.json">.well-known/agent-card.json ↗</a>
       </div>
       <div class="agent-grid">${agentCards}</div>
@@ -310,19 +352,19 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
 
     <section id="leaderboard" class="leaderboard" aria-live="polite">
       <div class="section-head">
-        <div><div class="section-kicker">05 / Telemetry</div><h2>Live leaderboard</h2></div>
-        <div class="live-state"><span class="pulse"></span><span id="updated-at">Connecting to KV snapshot</span></div>
+        <div><div class="section-kicker">05 / Telemetry</div><h2>Telemetry leaderboard</h2></div>
+        <div class="live-state"><span class="pulse"></span><span id="updated-at">Verified results only</span></div>
       </div>
       <div id="leaderboard-content">
         <div class="empty-state">
-          <div><div class="empty-title">Reading the latest snapshot…</div><div class="empty-copy">The registry is online. Fetching edge metrics now.</div></div>
+          <div><div class="empty-title">No verified results yet</div><div class="empty-copy">Rankings require verified outcome data. Raw invocation counts are not presented as verified outcomes.</div></div><div class="empty-code">entries: []</div>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="shell footer">
-    <div>GrokBotHub · Edge-native A2A infrastructure</div>
+    <div>GrokBotHub · Multilingual AI analysis</div>
     <div class="footer-links">
       <a href="/health">/health</a>
       <a href="/v1/bots">/v1/bots</a>
@@ -365,8 +407,15 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
         result.appendChild(group);
       }
 
-      function renderAnalysis(analysis) {
+      function renderAnalysis(analysis, attribution) {
         result.replaceChildren();
+        function appendAttribution() {
+          if (!attribution) return;
+          const note = document.createElement("p");
+          note.className = "ai-attribution";
+          note.textContent = String(attribution);
+          result.appendChild(note);
+        }
         if (analysis && typeof analysis === "object" && !Array.isArray(analysis)) {
           const score = Number(analysis.hook_score);
           if (Number.isFinite(score)) {
@@ -391,12 +440,16 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
             fit.append(label, document.createTextNode(String(analysis.audience_fit)));
             result.appendChild(fit);
           }
-          if (result.childElementCount) return;
+          if (result.childElementCount) {
+            appendAttribution();
+            return;
+          }
         }
         const text = document.createElement("pre");
         text.className = "result-text";
         text.textContent = typeof analysis === "string" ? analysis : JSON.stringify(analysis, null, 2);
         result.appendChild(text);
+        appendAttribution();
       }
 
       updateCount();
@@ -404,33 +457,57 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
       form.addEventListener("submit", async function (event) {
         event.preventDefault();
         if (!form.reportValidity()) return;
+        const controller = new AbortController();
+        const slowTimer = setTimeout(function () {
+          result.textContent = "Still analyzing audience fit and rewrite options…";
+        }, 5000);
+        const verySlowTimer = setTimeout(function () {
+          result.textContent = "This is taking longer than usual. We will stop at 20 seconds so you can retry.";
+        }, 12000);
+        const timeoutTimer = setTimeout(function () { controller.abort(); }, 20000);
         button.disabled = true;
         button.textContent = "Analyzing with Grok…";
         form.setAttribute("aria-busy", "true");
         result.textContent = "Reading your opening and scoring the first three seconds…";
         try {
+          const payload = {
+            script_text: input.value,
+            input_language: document.getElementById("input-language").value,
+            target_audience: document.getElementById("target-audience").value,
+            output_language: document.getElementById("output-language").value,
+            platform: document.getElementById("demo-platform").value,
+          };
+          for (const key of ["input_language", "target_audience", "output_language"]) {
+            if (!payload[key]) delete payload[key];
+          }
           const response = await fetch("/v1/demo/invoke", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ script_text: input.value }),
+            body: JSON.stringify(payload),
+            signal: controller.signal,
           });
           const data = await response.json().catch(function () { return null; });
           if (!response.ok || !data?.ok) {
             const messages = {
-              400: "Enter between 10 and 1200 characters.",
+              400: "Enter between 10 and 1200 characters and check the analysis options.",
               403: "Please run the demo from this page.",
               429: "Demo limit reached. Try again later or request production access.",
               502: "Grok is temporarily unavailable. Please try again.",
             };
             throw new Error(messages[response.status] || data?.error || "The demo could not be completed.");
           }
-          renderAnalysis(data.analysis);
+          renderAnalysis(data.analysis, data.attribution);
         } catch (error) {
           const message = document.createElement("p");
           message.className = "result-error";
-          message.textContent = error instanceof Error ? error.message : "The demo could not be completed.";
+          message.textContent = error instanceof Error && error.name === "AbortError"
+            ? "The analysis exceeded 20 seconds. Please retry; failed analyses do not consume your demo limit."
+            : error instanceof Error ? error.message : "The demo could not be completed.";
           result.replaceChildren(message);
         } finally {
+          clearTimeout(slowTimer);
+          clearTimeout(verySlowTimer);
+          clearTimeout(timeoutTimer);
           button.disabled = false;
           button.textContent = "Analyze my hook →";
           form.removeAttribute("aria-busy");
@@ -446,9 +523,9 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
         if (!response.ok) throw new Error("Leaderboard request failed");
         const data = await response.json();
         const entries = Array.isArray(data.entries) ? data.entries : [];
-        updatedAt.textContent = data.updated_at ? "Updated " + new Date(data.updated_at).toLocaleString() : "KV connected · awaiting metrics";
+        updatedAt.textContent = data.updated_at ? "Metrics updated " + new Date(data.updated_at).toLocaleString() : "Verified results only";
         if (!entries.length) {
-          container.innerHTML = '<div class="empty-state"><div><div class="empty-title">No ranking data yet</div><div class="empty-copy">Metrics will appear here after the first leaderboard snapshot is published.</div></div><div class="empty-code">entries: []</div></div>';
+          container.innerHTML = '<div class="empty-state"><div><div class="empty-title">No verified results yet</div><div class="empty-copy">Rankings require verified outcome data. Raw invocation counts are not presented as verified outcomes.</div></div><div class="empty-code">entries: []</div></div>';
           return;
         }
         const table = document.createElement("table");

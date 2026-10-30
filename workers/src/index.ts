@@ -1,3 +1,4 @@
+import { AI_ATTRIBUTION } from "./attribution";
 import { handleCheckout, handleCheckoutComplete, isStripeConfigured } from "./billing";
 import { handleDemoInvoke } from "./demo";
 import { renderHome } from "./home";
@@ -44,11 +45,13 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/v1/bots") {
-      return json({ ok: true, bots: listBots() });
+      const language = url.searchParams.get("lang") ?? request.headers.get("Accept-Language");
+      return json({ ok: true, bots: listBots(language) });
     }
 
     if (request.method === "GET" && url.pathname === "/.well-known/agent-card.json") {
-      return json({ agents: getAgentCards() });
+      const language = url.searchParams.get("lang") ?? request.headers.get("Accept-Language");
+      return json({ agents: getAgentCards(language) });
     }
 
     if (request.method === "POST" && url.pathname === "/v1/demo/invoke") {
@@ -68,7 +71,9 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/v1/a2a/invoke") {
-      return handleInvoke(request, env);
+      const response = await handleInvoke(request, env);
+      response.headers.set("Deprecation", "true");
+      return response;
     }
 
     return json({ ok: false, error: "not_found" }, 404);
@@ -152,6 +157,7 @@ async function handleInvoke(request: Request, env: Env): Promise<Response> {
     protocol: "A2A-v1",
     bot: body.target_bot,
     result: aiResp,
+    attribution: AI_ATTRIBUTION,
     usage: { latency_ms },
   });
 }

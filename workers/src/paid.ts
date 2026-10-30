@@ -1,3 +1,5 @@
+import { AnalysisOptionsError, resolveAnalysisOptions } from "./analysis-options";
+import { AI_ATTRIBUTION } from "./attribution";
 import { hashApiKey } from "./api-keys";
 import { recordMetric } from "./leaderboard";
 import { getPaidPlan } from "./plans";
@@ -44,6 +46,16 @@ export async function handlePaidInvoke(request: Request, env: PaidEnv): Promise<
     return json({ ok: false, error: "script_text_must_be_10_to_1200_characters" }, 400);
   }
 
+  let options;
+  try {
+    options = resolveAnalysisOptions({ ...body, script_text: scriptText });
+  } catch (error) {
+    if (error instanceof AnalysisOptionsError) {
+      return json({ ok: false, error: "invalid_analysis_options", field: error.field }, 400);
+    }
+    throw error;
+  }
+
   const quota = await updateQuota(env, keyHash, "consume", plan.analysisLimit);
   if (!quota.allowed) {
     return json({
@@ -56,12 +68,7 @@ export async function handlePaidInvoke(request: Request, env: PaidEnv): Promise<
   const bot = getBot(PAID_BOT_ID)!;
   const started = Date.now();
   try {
-    const { system, user } = bot.buildPrompt({
-      script_text: scriptText,
-      target_audience: typeof body?.target_audience === "string" ? body.target_audience : "US_GenZ",
-      output_language: "EN",
-      platform: typeof body?.platform === "string" ? body.platform : "reels",
-    });
+    const { system, user } = bot.buildPrompt({ script_text: scriptText, ...options });
     const response = await fetch(`${env.XAI_BASE_URL}/responses`, {
       method: "POST",
       headers: {
@@ -95,6 +102,8 @@ export async function handlePaidInvoke(request: Request, env: PaidEnv): Promise<
       ok: true,
       bot: bot.id,
       analysis,
+      attribution: AI_ATTRIBUTION,
+      options,
       usage: {
         latency_ms,
         used: quota.used,

@@ -1,58 +1,49 @@
-# A2A Protocol v1
+# Legacy custom A2A-v1 compatibility route
 
-## 请求
+> `A2A-v1` is a project-specific JSON format, not the official Agent2Agent protocol. `POST /v1/a2a/invoke` is deprecated and returns `Deprecation: true`; use `/v1/app/invoke` for paid hook analysis.
+
+## Request
 
 ```json
 {
   "protocol": "A2A-v1",
-  "method": "invoke",
   "target_bot": "bot:drama-hook-analyzer",
-  "payload": { "...": "bot-specific" },
-  "context": { "request_id": "uuid", "caller": "agent:foo" }
+  "payload": {
+    "script_text": "The maid reveals she is the true heir at the wedding."
+  }
 }
-响应
-json
+```
+
+Authentication uses `Authorization: Bearer $A2A_SHARED_SECRET`.
+
+## Successful response
+
+```json
 {
   "ok": true,
   "protocol": "A2A-v1",
   "bot": "bot:drama-hook-analyzer",
   "result": {},
-  "usage": { "latency_ms": 412, "tokens": 386 }
+  "attribution": "AI-generated with Grok. Review before publishing.",
+  "usage": { "latency_ms": 412 }
 }
-错误码
-code	HTTP	含义
-unauthorized	401	A2A_SHARED_SECRET 不匹配
-invalid_a2a_request	400	protocol / target_bot 缺失
-bot_not_found	404	registry 中无此 bot
-x_policy_violation	403	触发 X 合规守卫
-invalid_json	400	请求体非 JSON
-发现
-GET /v1/bots 返回 registry 中所有 bot 的 agentCard 摘要，字段对齐 a2a/schema.json 的 $defs.agentCard。
+```
 
-text
+## Errors
 
-### `docs/x-compliance.md`
+| Code | HTTP | Meaning |
+| --- | ---: | --- |
+| `unauthorized` | 401 | Shared secret does not match |
+| `invalid_json` | 400 | Request body is not JSON |
+| `invalid_a2a_request` | 400 | Custom protocol or target bot is missing |
+| `x_policy_violation` | 403 | Policy guard rejected the request |
+| `bot_not_found` | 404 | Bot is not publicly registered |
+| `ai_invocation_failed` | 500 | Upstream AI invocation failed |
 
-```markdown
-# X Compliance Notes
+## Discovery
 
-本项目不抓取 X，不使用浏览器自动化，只通过官方 API 与用户主动输入工作。
+- `GET /v1/bots?lang=en|id|zh` returns public bot summaries.
+- `GET /.well-known/agent-card.json?lang=en|id|zh` returns localized legacy discovery cards.
+- `Accept-Language` is used when `lang` is absent; English is the fallback.
 
-## 硬性约束（由 `workers/src/policy.ts` 强制执行）
-
-- 自动回复 / DM 必须 `user_initiated === true`
-- 禁止 `cross_account` 相同内容
-- 发布类动作必须 `bot_disclosed === true`
-- 命中 bulk 关键词直接拒绝
-
-## 运营侧要求
-
-- bot 账号在 bio 中披露自动化身份
-- 不进行批量关注 / 取关 / 点赞
-- 不对同一用户重复发送相同文案
-- 保留人工接管通道
-
-## 参考
-
-- X Automation Rules: https://help.x.com/en/rules-and-policies/x-automation
-- X Developer Agreement & Policy
+See [`x-compliance.md`](./x-compliance.md) for the current policy guard.

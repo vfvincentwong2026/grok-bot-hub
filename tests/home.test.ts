@@ -11,15 +11,27 @@ describe("GET /", () => {
     expect(html).toContain("GrokBotHub");
     expect(html).toContain("Drama Hook Analyzer");
     expect(html).toContain("Viral Radar");
-    expect(html).toContain("DM Funnel");
-    expect(html).toContain("Agent Card contracts");
-    expect(html).toContain("Live leaderboard");
+    expect(html).not.toContain("DM Funnel");
+    expect(html).toContain("Legacy discovery cards");
+    expect(html).toContain("Opening hooks, analyzed.");
+    expect(html).not.toContain("Standard invocation protocol");
+    expect(html).toContain("Telemetry leaderboard");
+    expect(html).toContain("No verified results yet");
+    expect(html).toContain("renderAnalysis(data.analysis, data.attribution)");
     expect(html).toContain("From first hook to full slate");
     expect(html).toContain("Rp449,000");
     expect(html).toContain("Rp1,499,000");
     expect(html).toContain("no auto-renew");
     expect(html).toContain("Request Creator");
     expect(html).toContain("Request Studio");
+    expect(html).toContain('id="input-language"');
+    expect(html).toContain('id="target-audience"');
+    expect(html).toContain('id="demo-platform"');
+    expect(html).toContain('id="output-language"');
+    expect(html).toContain("Indonesian input defaults to ID Gen Z");
+    expect(html).toContain("new AbortController()");
+    expect(html).toContain("controller.abort(); }, 20000)");
+    expect(html).toContain("failed analyses do not consume your demo limit");
   });
 
   it("enables real checkout buttons only when Stripe is configured", async () => {
