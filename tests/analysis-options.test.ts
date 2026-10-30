@@ -14,8 +14,9 @@ describe("analysis options", () => {
       input_language: "id",
       target_audience: "ID_GenZ",
       output_language: "id",
-      platform: "reels",
+      platform: "tiktok",
     });
+    expect(resolveAnalysisOptions({ script_text: "A bride reveals the contract at her wedding." }).platform).toBe("reels");
   });
 
   it("honors explicit language, audience, and platform selections", () => {

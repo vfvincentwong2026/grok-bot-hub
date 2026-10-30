@@ -1,5 +1,7 @@
 import { AnalysisOptionsError, resolveAnalysisOptions } from "./analysis-options";
+import { extractOutputText, parseHookAnalysis } from "./analysis-result";
 import { AI_ATTRIBUTION } from "./attribution";
+import { hashScriptText, recordFirstPartyEvent } from "./events";
 import { recordMetric } from "./leaderboard";
 import { getBot } from "./registry";
 
@@ -62,7 +64,7 @@ export async function handleDemoInvoke(request: Request, env: DemoEnv): Promise<
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-        max_output_tokens: 500,
+        max_output_tokens: 900,
       }),
     });
     if (!response.ok) throw new Error(`xAI request failed with status ${response.status}`);
@@ -70,17 +72,15 @@ export async function handleDemoInvoke(request: Request, env: DemoEnv): Promise<
     const aiResp = (await response.json()) as any;
     const latency_ms = Date.now() - started;
     const tokens = typeof aiResp?.usage?.total_tokens === "number" ? aiResp.usage.total_tokens : undefined;
-    await recordMetric(env, bot.id, { latency_ms, tokens, ok: true });
+    const receiptId = crypto.randomUUID();
+    const analysis = parseHookAnalysis(extractOutputText(aiResp), receiptId);
+    const scriptHash = await hashScriptText(scriptText);
+    await Promise.allSettled([
+      recordMetric(env, bot.id, { latency_ms, tokens, ok: true }),
+      recordFirstPartyEvent(env, "demo_done", { duration_ms: latency_ms, script_hash: scriptHash }),
+    ]);
 
-    const text = extractOutputText(aiResp);
-    let analysis: unknown = text;
-    try {
-      analysis = JSON.parse(text);
-    } catch {
-      // Keep the plain-text response when the model does not return valid JSON.
-    }
-
-    return json({ ok: true, bot: bot.id, analysis, attribution: AI_ATTRIBUTION, options, usage: { latency_ms } });
+    return json({ ok: true, bot: bot.id, analysis, receipt_id: receiptId, attribution: AI_ATTRIBUTION, options, usage: { latency_ms } });
   } catch {
     const latency_ms = Date.now() - started;
     await Promise.allSettled([
@@ -125,19 +125,6 @@ async function decrement(env: DemoEnv, reservation: DemoReservation): Promise<vo
   await env.LEADERBOARD_KV.put(reservation.key, String(Math.max(0, current - 1)), {
     expirationTtl: reservation.ttl,
   });
-}
-
-function extractOutputText(response: any): string {
-  if (typeof response?.output_text === "string") return response.output_text;
-  const output = Array.isArray(response?.output) ? response.output : [];
-  const texts: string[] = [];
-  for (const item of output) {
-    if (item?.type !== "message" || !Array.isArray(item.content)) continue;
-    for (const part of item.content) {
-      if (part?.type === "output_text" && typeof part.text === "string") texts.push(part.text);
-    }
-  }
-  return texts.join("\n");
 }
 
 function json(data: unknown, status = 200): Response {

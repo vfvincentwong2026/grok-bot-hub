@@ -58,8 +58,10 @@ describe("POST /v1/demo/invoke", () => {
                     type: "output_text",
                     text: JSON.stringify({
                       hook_score: 88,
+                      dimensions: { conflict: 90, identity_reveal: 95, curiosity_gap: 84, emotion: 86 },
                       strengths: ["Immediate identity reversal"],
                       suggestions: ["Reveal the stakes one line earlier"],
+                      rewritten_hooks: ["Hook satu", "Hook dua", "Hook tiga"],
                       audience_fit: "Strong fit for viewers who enjoy heir-reveal drama.",
                     }),
                   },
@@ -88,14 +90,20 @@ describe("POST /v1/demo/invoke", () => {
       expect.objectContaining({
         ok: true,
         bot: "bot:drama-hook-analyzer",
-        analysis: expect.objectContaining({ hook_score: 88 }),
+        analysis: expect.objectContaining({
+          hook_score: 88,
+          dimensions: { conflict: 90, identity_reveal: 95, curiosity_gap: 84, emotion: 86 },
+          rewritten_hooks: ["Hook satu", "Hook dua", "Hook tiga"],
+          receipt_id: expect.any(String),
+        }),
+        receipt_id: expect.any(String),
         attribution: "AI-generated with Grok. Review before publishing.",
       }),
     );
     expect(fetch).toHaveBeenCalledOnce();
     const [, options] = vi.mocked(fetch).mock.calls[0]!;
     expect(JSON.parse(String(options?.body))).toEqual(
-      expect.objectContaining({ model: "grok-test", max_output_tokens: 500 }),
+      expect.objectContaining({ model: "grok-test", max_output_tokens: 900 }),
     );
   });
 
@@ -150,6 +158,36 @@ describe("POST /v1/demo/invoke", () => {
     expect(response.status).toBe(502);
     const demoCounters = [...store.entries()].filter(([key]) => key.startsWith("demo:"));
     expect(demoCounters).toHaveLength(2);
+    expect(demoCounters.map(([, value]) => value)).toEqual(["0", "0"]);
+  });
+
+  it("records demo duration with only a script hash", async () => {
+    const { env, store } = createEnv();
+    const response = await invokeDemo(env, validScript);
+    const eventEntry = [...store.entries()].find(([key]) => key.startsWith("analytics:"));
+
+    expect(response.status).toBe(200);
+    expect(eventEntry).toBeDefined();
+    const event = JSON.parse(eventEntry![1]);
+    expect(event).toEqual(expect.objectContaining({
+      event: "demo_done",
+      duration_ms: expect.any(Number),
+      script_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
+    expect(eventEntry![1]).not.toContain(validScript);
+  });
+
+  it("rejects malformed model output and releases demo capacity", async () => {
+    const { env, store } = createEnv();
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ output_text: '{"hook_score":88}' }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    const response = await invokeDemo(env, validScript);
+
+    expect(response.status).toBe(502);
+    expect([...store.keys()].filter((key) => key.startsWith("analytics:"))).toHaveLength(0);
+    const demoCounters = [...store.entries()].filter(([key]) => key.startsWith("demo:"));
     expect(demoCounters.map(([, value]) => value)).toEqual(["0", "0"]);
   });
 

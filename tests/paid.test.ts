@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { INDONESIAN_EXAMPLE } from "../workers/src/analysis-options";
 import { hashApiKey } from "../workers/src/api-keys";
 import worker from "../workers/src/index";
 
@@ -61,7 +62,17 @@ describe("POST /v1/app/invoke", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ output_text: '{"hook_score":85}', usage: { total_tokens: 100 } }), {
+        new Response(JSON.stringify({
+          output_text: JSON.stringify({
+            hook_score: 85,
+            dimensions: { conflict: 80, identity_reveal: 85, curiosity_gap: 75, emotion: 90 },
+            strengths: ["Immediate conflict"],
+            suggestions: ["Increase curiosity"],
+            rewritten_hooks: ["Rewrite one", "Rewrite two", "Rewrite three"],
+            audience_fit: "Strong fit",
+          }),
+          usage: { total_tokens: 100 },
+        }), {
           status: 200,
           headers: { "content-type": "application/json" },
         }),
@@ -79,7 +90,12 @@ describe("POST /v1/app/invoke", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.analysis).toEqual({ hook_score: 85 });
+    expect(data.analysis).toEqual(expect.objectContaining({
+      hook_score: 85,
+      rewritten_hooks: ["Rewrite one", "Rewrite two", "Rewrite three"],
+      receipt_id: expect.any(String),
+    }));
+    expect(data.receipt_id).toBe(data.analysis.receipt_id);
     expect(data.attribution).toBe("AI-generated with Grok. Review before publishing.");
     expect(data.usage).toEqual(
       expect.objectContaining({ used: 1, remaining: 999, limit: 1000, expires_at: expiresAt }),
@@ -137,6 +153,30 @@ describe("POST /v1/app/invoke", () => {
       expect.objectContaining({ ok: false, error: "pass_quota_exceeded" }),
     );
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("records only the first real call for each paid key", async () => {
+    const { env, store, apiKey } = await createEnv();
+    await invoke(env, apiKey);
+    await invoke(env, apiKey);
+    const events = [...store.entries()]
+      .filter(([key]) => /^analytics:\d+:/.test(key))
+      .map(([, value]) => JSON.parse(value));
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual(expect.objectContaining({
+      event: "first_real_call",
+      script_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    }));
+    expect(JSON.stringify(events[0])).not.toContain("The maid reveals");
+  });
+
+  it("does not count the built-in example as activation", async () => {
+    const { env, store, apiKey } = await createEnv();
+    const response = await invoke(env, apiKey, { script_text: INDONESIAN_EXAMPLE });
+
+    expect(response.status).toBe(200);
+    expect([...store.keys()].filter((key) => /^analytics:\d+:/.test(key))).toHaveLength(0);
   });
 
   it("refunds reserved quota when the AI call fails", async () => {

@@ -67,7 +67,7 @@ describe("billing", () => {
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const { env } = createEnv();
+    const { env, store } = createEnv();
     const response = await checkout(env, "studio");
     const [, options] = fetchMock.mock.calls[0]!;
     const params = new URLSearchParams(String(options?.body));
@@ -77,6 +77,9 @@ describe("billing", () => {
     expect(params.get("line_items[0][price]")).toBe("price_studio_idr");
     expect(params.get("metadata[plan]")).toBe("studio");
     expect(params.get("metadata[pass_days]")).toBe("30");
+    const event = [...store.values()].map((value) => value.startsWith("{") ? JSON.parse(value) : null)
+      .find((value) => value?.event === "checkout_start");
+    expect(event).toEqual(expect.objectContaining({ plan: "studio" }));
   });
 
   it("verifies payment and issues a hashed 30-day API key only once", async () => {
@@ -121,5 +124,8 @@ describe("billing", () => {
       }),
     );
     expect(repeated.api_key).toBeUndefined();
+    const paidEvents = [...store.entries()].filter(([key]) => /^analytics:\d+:/.test(key));
+    expect(paidEvents).toHaveLength(1);
+    expect(JSON.parse(paidEvents[0]![1])).toEqual(expect.objectContaining({ event: "paid", plan: "creator" }));
   });
 });

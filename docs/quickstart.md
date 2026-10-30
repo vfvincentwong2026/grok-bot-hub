@@ -45,6 +45,8 @@ npm run dev -- --test-scheduled
 
 ```bash
 curl http://localhost:8787/health
+curl "http://localhost:8787/?lang=id"
+curl "http://localhost:8787/install?lang=zh"
 curl "http://localhost:8787/v1/bots?lang=id"
 curl http://localhost:8787/v1/leaderboard
 ```

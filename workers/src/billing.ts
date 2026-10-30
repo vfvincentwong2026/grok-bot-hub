@@ -1,4 +1,5 @@
 import { generateApiKey, hashApiKey } from "./api-keys";
+import { recordFirstPartyEvent } from "./events";
 import { getPaidPlan, getPriceIdEnv } from "./plans";
 
 export interface BillingEnv {
@@ -50,6 +51,7 @@ export async function handleCheckout(request: Request, env: BillingEnv): Promise
     if (!response.ok || typeof session?.url !== "string" || !session.url.startsWith("https://checkout.stripe.com/")) {
       return json({ ok: false, error: "stripe_checkout_unavailable" }, 502);
     }
+    await Promise.allSettled([recordFirstPartyEvent(env, "checkout_start", { plan: plan.id })]);
     return json({ ok: true, url: session.url });
   } catch {
     return json({ ok: false, error: "stripe_checkout_unavailable" }, 502);
@@ -114,6 +116,7 @@ export async function handleCheckoutComplete(request: Request, env: BillingEnv):
       `billing:session:${sessionId}`,
       JSON.stringify({ key_hash: keyHash, plan: plan.id, issued_at: createdAtIso, expires_at: expiresAt }),
     );
+    await Promise.allSettled([recordFirstPartyEvent(env, "paid", { plan: plan.id })]);
 
     return json({
       ok: true,

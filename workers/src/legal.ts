@@ -26,15 +26,17 @@ const pages: Record<LegalPage, { title: string; intro: string; body: string }> =
     body: `
       <h2>1. Information we process</h2>
       <p>We process submitted script text to generate analysis. For public demo throttling, we store a truncated SHA-256 hash of the connecting IP, not the raw IP in our counter key. Paid API keys are stored only as SHA-256 hashes. We also process plan, quota, expiration, operational metrics, and Stripe Checkout Session identifiers.</p>
-      <h2>2. Payment information</h2>
+      <h2>2. First-party product analytics</h2>
+      <p>We record landing_view, demo_start, demo_done, rewrite_copy, install_click, first_real_call, upgrade_view, checkout_start, and paid events. Event records may contain an event timestamp, result duration, install method, plan, or a SHA-256 script hash. We do not store script text in analytics records and do not use third-party advertising or tracking scripts. Browser local storage remembers your demo options and, after a completed purchase, your API key.</p>
+      <h2>3. Payment information</h2>
       <p>Checkout is hosted by Stripe when billing is enabled. GrokBotHub does not collect or store full card numbers or card security codes. Stripe processes payment and identity information under its own terms and privacy policy.</p>
-      <h2>3. Service providers</h2>
+      <h2>4. Service providers</h2>
       <p>The service runs on Cloudflare Workers, KV, and Durable Objects. Script text and prompts are sent to xAI for analysis. These providers process data as needed to deliver their services and may have their own retention policies.</p>
-      <h2>4. Retention</h2>
-      <p>The application does not intentionally persist submitted script text in its own KV database. Billing, key-hash, quota, and operational records may be retained for service delivery, security, support, accounting, and legal obligations. Demo counters expire automatically.</p>
-      <h2>5. Your choices</h2>
-      <p>Do not submit confidential or sensitive personal information. You may request help with a billing or service record by <a href="${SUPPORT_URL}">opening a support issue</a>. Provide only the minimum information needed and never post secret keys or identity documents publicly.</p>
-      <h2>6. Policy updates</h2>
+      <h2>5. Retention</h2>
+      <p>The application does not intentionally persist submitted script text in its own KV database. First-party analytics records expire after 90 days. Billing, key-hash, quota, and operational records may be retained for service delivery, security, support, accounting, and legal obligations. Demo counters expire automatically.</p>
+      <h2>6. Your choices</h2>
+      <p>Do not submit confidential or sensitive personal information. You may clear browser local storage to remove saved demo options and any API key stored by this site. You may request help with a billing or service record by <a href="${SUPPORT_URL}">opening a support issue</a>. Provide only the minimum information needed and never post secret keys or identity documents publicly.</p>
+      <h2>7. Policy updates</h2>
       <p>We may update this policy as the product or payment providers change. The latest version will be published on this page with its effective date.</p>`,
   },
   refunds: {
@@ -89,7 +91,7 @@ export function renderLegalPage(page: LegalPage): Response {
     <div class="eyebrow">Legal / ${page}</div>
     <h1>${content.title}</h1>
     <p class="intro">${content.intro}</p>
-    <div class="updated">Effective 28 October 2026</div>
+    <div class="updated">Effective 31 October 2026</div>
     ${content.body}
   </main>
   <footer class="shell"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/pricing">Pricing</a></footer>

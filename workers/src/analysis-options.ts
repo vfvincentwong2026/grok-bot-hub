@@ -2,6 +2,7 @@ export const INPUT_LANGUAGES = ["auto", "id", "en", "zh"] as const;
 export const OUTPUT_LANGUAGES = ["id", "en", "zh"] as const;
 export const TARGET_AUDIENCES = ["ID_GenZ", "ID_Millennial", "US_GenZ", "CN_GenZ"] as const;
 export const PLATFORMS = ["tiktok", "reels", "youtube_shorts", "dramabox", "shortmax", "reelshort"] as const;
+export const INDONESIAN_EXAMPLE = "Kamu bilang aku hanya seorang pelayan, tetapi aku adalah pewaris yang sebenarnya. Bukankah nama ku ada di surat wasiat ayahmu?";
 
 export type DetectedLanguage = Exclude<(typeof INPUT_LANGUAGES)[number], "auto">;
 
@@ -27,7 +28,7 @@ export function resolveAnalysisOptions(body: any): AnalysisOptions {
     ?? (inputLanguage === "id" ? "ID_GenZ" : inputLanguage === "zh" ? "CN_GenZ" : "US_GenZ");
   const outputLanguage = readEnum(body?.output_language, OUTPUT_LANGUAGES, "output_language")
     ?? inputLanguage;
-  const platform = readEnum(body?.platform, PLATFORMS, "platform") ?? "reels";
+  const platform = readEnum(body?.platform, PLATFORMS, "platform") ?? (inputLanguage === "id" ? "tiktok" : "reels");
 
   return {
     input_language: inputLanguage,

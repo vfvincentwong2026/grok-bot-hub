@@ -1,384 +1,308 @@
+import { INDONESIAN_EXAMPLE } from "./analysis-options";
+import { analyticsScript } from "./events";
 import { pricingScript, pricingStyles, renderPricingSection } from "./pricing-view";
-import { getAgentCards, listBots } from "./registry";
-import type { AgentCard } from "./types";
+import type { Language } from "./types";
 
-export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEnabled: false }): Response {
-  const bots = listBots();
-  const cards = getAgentCards() as Record<string, AgentCard>;
+const copy = {
+  id: {
+    navDemo: "Demo",
+    navInstall: "Cara memasang",
+    navPricing: "Harga",
+    heroTitle: "Hook 3 detik pertama, dinilai dan ditulis ulang.",
+    heroCopy: "Tempel opening drama pendek Anda. Dapatkan skor per dimensi dan 3 versi hook yang lebih kuat dalam Bahasa Indonesia, Inggris, atau Mandarin.",
+    primary: "Coba hook Bahasa Indonesia →",
+    demoTitle: "Bandingkan opening asli dengan 3 versi yang lebih kuat",
+    demoNote: "Analisis Grok sungguhan · tanpa akun",
+    inputLabel: "Opening drama pendek Anda",
+    inputLanguage: "Bahasa input",
+    autoDetect: "Deteksi otomatis",
+    audience: "Target audiens",
+    autoAudience: "Otomatis dari bahasa",
+    platform: "Platform",
+    outputLanguage: "Bahasa output",
+    matchInput: "Ikuti bahasa input",
+    defaultNote: "Bahasa Indonesia otomatis memakai ID Gen Z + TikTok",
+    analyze: "Analisis hook saya →",
+    limits: "3 panggilan demo per IP/jam · 20 global/hari",
+    placeholder: "Skor, analisis per dimensi, dan 3 hook hasil tulis ulang akan tampil di sini.",
+    score: "Skor hook / 100",
+    original: "Opening asli",
+    rewrites: "3 hook hasil tulis ulang",
+    copy: "Salin",
+    copied: "Tersalin",
+    strengths: "Yang sudah kuat",
+    suggestions: "Yang perlu diperkuat",
+    audienceFit: "Kecocokan audiens",
+    receipt: "ID hasil",
+    analyzing: "Membaca opening dan menilai 3 detik pertama…",
+    working: "Menganalisis dengan Grok…",
+    slow: "Masih menganalisis kecocokan audiens dan pilihan tulis ulang…",
+    verySlow: "Lebih lama dari biasanya. Proses akan berhenti pada 20 detik agar Anda dapat mencoba lagi.",
+    timeout: "Analisis melebihi 20 detik. Silakan coba lagi; analisis gagal tidak mengurangi kuota demo.",
+    failed: "Demo tidak dapat diselesaikan.",
+    invalid: "Masukkan 10–1200 karakter dan periksa opsi analisis.",
+    forbidden: "Jalankan demo dari halaman ini.",
+    limited: "Batas demo tercapai. Coba lagi nanti atau minta akses produksi.",
+    unavailable: "Grok sementara tidak tersedia. Silakan coba lagi.",
+    installTitle: "Gunakan di alur kerja tim Anda",
+    installCopy: "Lihat jalur Grok Bot, klien MCP, dan API. Integrasi yang belum tersedia ditandai dengan jelas.",
+    installButton: "Lihat cara memasang →",
+    dimensions: { conflict: "Konflik", identity_reveal: "Pengungkapan identitas", curiosity_gap: "Rasa penasaran", emotion: "Emosi" },
+  },
+  en: {
+    navDemo: "Demo",
+    navInstall: "Install",
+    navPricing: "Pricing",
+    heroTitle: "Your first 3 seconds, scored and rewritten.",
+    heroCopy: "Paste a short-drama opening. Get dimension scores and 3 stronger hook rewrites in Indonesian, English, or Chinese.",
+    primary: "Try an Indonesian hook →",
+    demoTitle: "Compare your original with 3 stronger versions",
+    demoNote: "Real Grok analysis · no sign-up",
+    inputLabel: "Your short-drama opening",
+    inputLanguage: "Input language",
+    autoDetect: "Auto detect",
+    audience: "Target audience",
+    autoAudience: "Auto from language",
+    platform: "Platform",
+    outputLanguage: "Output language",
+    matchInput: "Match input",
+    defaultNote: "Indonesian input defaults to ID Gen Z + TikTok",
+    analyze: "Analyze my hook →",
+    limits: "3 demo calls per IP/hour · 20 global/day",
+    placeholder: "Your score, dimension analysis, and 3 rewritten hooks will appear here.",
+    score: "Hook score / 100",
+    original: "Original opening",
+    rewrites: "3 rewritten hooks",
+    copy: "Copy",
+    copied: "Copied",
+    strengths: "What works",
+    suggestions: "Make it stronger",
+    audienceFit: "Audience fit",
+    receipt: "Result ID",
+    analyzing: "Reading your opening and scoring the first three seconds…",
+    working: "Analyzing with Grok…",
+    slow: "Still analyzing audience fit and rewrite options…",
+    verySlow: "This is taking longer than usual. We will stop at 20 seconds so you can retry.",
+    timeout: "The analysis exceeded 20 seconds. Please retry; failed analyses do not consume your demo limit.",
+    failed: "The demo could not be completed.",
+    invalid: "Enter between 10 and 1200 characters and check the analysis options.",
+    forbidden: "Please run the demo from this page.",
+    limited: "Demo limit reached. Try again later or request production access.",
+    unavailable: "Grok is temporarily unavailable. Please try again.",
+    installTitle: "Use this inside your team’s workflow",
+    installCopy: "Review the Grok Bot, MCP client, and API paths. Unavailable integrations are clearly marked.",
+    installButton: "View install options →",
+    dimensions: { conflict: "Conflict", identity_reveal: "Identity reveal", curiosity_gap: "Curiosity gap", emotion: "Emotion" },
+  },
+  zh: {
+    navDemo: "试玩",
+    navInstall: "接入方式",
+    navPricing: "价格",
+    heroTitle: "前 3 秒钩子，直接评分并改写。",
+    heroCopy: "粘贴短剧开场，获得分项评分和 3 条更强的钩子改写，支持印尼语、英语和中文输出。",
+    primary: "试一段印尼语开头 →",
+    demoTitle: "对比原开场与 3 条改写版本",
+    demoNote: "真实 Grok 分析 · 无需注册",
+    inputLabel: "你的短剧开场",
+    inputLanguage: "输入语言",
+    autoDetect: "自动识别",
+    audience: "目标受众",
+    autoAudience: "按语言自动选择",
+    platform: "平台",
+    outputLanguage: "输出语言",
+    matchInput: "跟随输入语言",
+    defaultNote: "印尼语输入默认使用 ID Gen Z + TikTok",
+    analyze: "分析我的钩子 →",
+    limits: "每个 IP 每小时 3 次 · 全球每天 20 次",
+    placeholder: "这里会显示总分、分项评分和 3 条改写钩子。",
+    score: "钩子评分 / 100",
+    original: "原始开场",
+    rewrites: "3 条改写钩子",
+    copy: "复制",
+    copied: "已复制",
+    strengths: "已经有效的地方",
+    suggestions: "可以加强的地方",
+    audienceFit: "受众适配",
+    receipt: "结果 ID",
+    analyzing: "正在读取开场并评估前 3 秒…",
+    working: "正在使用 Grok 分析…",
+    slow: "仍在分析受众适配和改写方案…",
+    verySlow: "这次比平时慢，20 秒后会自动停止，方便你重试。",
+    timeout: "分析超过 20 秒。请重试；失败的分析不扣免费额度。",
+    failed: "暂时无法完成试玩。",
+    invalid: "请输入 10–1200 个字符，并检查分析选项。",
+    forbidden: "请从本页面运行试玩。",
+    limited: "免费额度已用完，请稍后再试或申请正式接入。",
+    unavailable: "Grok 暂时不可用，请重试。",
+    installTitle: "接入团队现有工作流",
+    installCopy: "查看 Grok Bot、MCP 客户端和 API 三条路径，未上线的集成会明确标注。",
+    installButton: "查看接入方式 →",
+    dimensions: { conflict: "冲突", identity_reveal: "身份揭示", curiosity_gap: "好奇缺口", emotion: "情绪" },
+  },
+} as const;
 
-  const botCards = bots
-    .map(
-      (bot, index) => `
-        <article class="bot-card">
-          <div class="bot-index">0${index + 1}</div>
-          <div class="bot-body">
-            <div class="bot-id">${bot.id}</div>
-            <h3>${bot.name}</h3>
-            <p>${bot.description}</p>
-            <div class="skill-row">${bot.skills.map((skill) => `<code>${skill}</code>`).join("")}</div>
-          </div>
-        </article>`,
-    )
-    .join("");
+interface HomeOptions {
+  checkoutEnabled?: boolean;
+  language?: Language;
+  showPricing?: boolean;
+}
 
-  const agentCards = bots
-    .map((bot) => {
-      const card = cards[bot.id]!;
-      const skills = card.skills
-        .map(
-          (skill) => `
-            <li>
-              <strong>${skill.name}</strong>
-              <span>${skill.description}</span>
-              <div class="tag-row">${(skill.tags ?? []).map((tag) => `<span class="tag">${tag}</span>`).join("")}</div>
-            </li>`,
-        )
-        .join("");
-      return `
-        <article class="agent-card">
-          <div class="agent-card-head">
-            <div>
-              <div class="bot-id">${bot.id}</div>
-              <h3>${card.name}</h3>
-            </div>
-            <span class="version">v${card.version}</span>
-          </div>
-          <p>${card.description}</p>
-          <ul class="skill-list">${skills}</ul>
-        </article>`;
-    })
-    .join("");
-
+export function renderHome(options: HomeOptions = {}): Response {
+  const language = options.language ?? "id";
+  const t = copy[language];
   const html = `<!doctype html>
-<html lang="en">
+<html lang="${language}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="GrokBotHub — multilingual short-drama hook analysis with Grok on Cloudflare Workers.">
-  <title>GrokBotHub — Short-Drama Hook Analysis</title>
+  <meta name="description" content="${t.heroCopy}">
+  <title>GrokBotHub — ${t.heroTitle}</title>
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b0e0d;
-      --surface: #121615;
-      --surface-2: #181d1b;
-      --line: #2a322e;
-      --text: #f0f4ed;
-      --muted: #9aa79f;
-      --accent: #c7f36b;
-      --accent-dark: #18220d;
-      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    :root { color-scheme:dark; --bg:#0b0e0d; --surface:#121615; --surface-2:#181d1b; --line:#2a322e; --text:#f0f4ed; --muted:#a8b4ab; --accent:#c7f36b; --accent-dark:#18220d; --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace; --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); -webkit-font-smoothing:antialiased; }
+    a { color:inherit; text-decoration:none; }
+    button,textarea,select { font:inherit; }
+    .shell { width:min(1120px,calc(100% - 40px)); margin:0 auto; }
+    .topbar { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:22px; border-bottom:1px solid var(--line); }
+    .brand { font-weight:750; letter-spacing:-.03em; white-space:nowrap; }
+    .brand span { color:var(--muted); font-weight:500; }
+    .nav { display:flex; align-items:center; gap:22px; color:var(--muted); font-size:13px; }
+    .nav a:hover { color:var(--text); }
+    .languages { display:flex; gap:4px; padding-left:16px; border-left:1px solid var(--line); }
+    .languages a { min-width:34px; padding:8px 6px; border:1px solid transparent; border-radius:5px; text-align:center; font:11px/1 var(--mono); }
+    .languages a[aria-current="true"] { color:var(--accent); border-color:var(--line); }
+    .hero { max-width:880px; padding:70px 0 54px; }
+    h1 { margin:0; font-size:clamp(44px,6.5vw,76px); line-height:1.02; letter-spacing:-.055em; font-weight:720; }
+    .hero-copy { max-width:680px; margin:24px 0 0; color:var(--muted); font-size:17px; line-height:1.7; }
+    .hero-actions { margin-top:28px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border:1px solid var(--line); border-radius:6px; background:transparent; color:var(--text); font-size:13px; font-weight:650; cursor:pointer; }
+    .button.primary { background:var(--accent); color:var(--accent-dark); border-color:var(--accent); }
+    .button.secondary:hover { border-color:var(--muted); background:var(--surface); }
+    .button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+    .button:disabled { cursor:wait; opacity:.65; }
+    section { padding:54px 0 0; }
+    .section-head { display:flex; align-items:end; justify-content:space-between; gap:20px; margin-bottom:22px; }
+    h2 { margin:0; font-size:clamp(25px,4vw,34px); line-height:1.15; letter-spacing:-.035em; }
+    .section-note { color:var(--muted); font:12px/1.5 var(--mono); white-space:nowrap; }
+    .demo-shell { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
+    .demo-input { padding:28px; }
+    .demo-input > label { display:block; margin-bottom:12px; font-size:14px; font-weight:650; }
+    textarea { width:100%; min-height:150px; resize:vertical; padding:16px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); font:15px/1.7 var(--sans); }
+    .demo-options { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+    .demo-options label { display:grid; gap:7px; color:var(--muted); font-size:12px; line-height:1.4; }
+    .demo-options select { width:100%; min-height:42px; padding:8px 10px; border:1px solid var(--line); border-radius:5px; background:var(--bg); color:var(--text); font-size:12px; }
+    .demo-meta { display:flex; justify-content:space-between; gap:12px; margin:12px 0 20px; color:var(--muted); font:11px/1.5 var(--mono); }
+    .demo-limits { display:inline; margin-left:14px; color:var(--muted); font:11px/1.6 var(--mono); }
+    .demo-output { min-width:0; padding:28px; border-top:1px solid var(--line); background:var(--surface-2); }
+    #demo-result { color:var(--muted); font-size:14px; line-height:1.7; }
+    .score-row { display:flex; align-items:end; gap:12px; margin-bottom:24px; }
+    .score-value { color:var(--accent); font:54px/.9 var(--mono); letter-spacing:-.06em; }
+    .score-label { color:var(--muted); font:11px/1.4 var(--mono); text-transform:uppercase; }
+    .dimensions { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin:0 0 28px; background:var(--line); border:1px solid var(--line); }
+    .dimension { padding:14px; background:var(--surface); }
+    .dimension span { display:block; color:var(--muted); font-size:11px; line-height:1.4; }
+    .dimension strong { display:block; margin-top:6px; color:var(--text); font:20px/1 var(--mono); }
+    .comparison { display:grid; grid-template-columns:1fr 1.4fr; gap:22px; }
+    .comparison h3 { margin:0 0 10px; color:var(--text); font-size:13px; }
+    .original-text,.rewrite p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text); }
+    .original-text { padding:16px; border-left:2px solid var(--muted); background:var(--surface); }
+    .rewrite { display:grid; grid-template-columns:1fr auto; gap:12px; padding:16px 0; border-top:1px solid var(--line); }
+    .rewrite:first-of-type { border-top:0; padding-top:0; }
+    .rewrite .button { align-self:start; min-height:36px; padding:0 12px; }
+    .result-group { margin-top:22px; }
+    .result-group h3 { margin:0 0 8px; color:var(--text); font-size:13px; }
+    .result-group ul { margin:0; padding-left:18px; }
+    .result-group li + li { margin-top:6px; }
+    .audience-fit { margin:22px 0 0; padding-top:18px; border-top:1px solid var(--line); }
+    .audience-fit strong { display:block; margin-bottom:6px; color:var(--text); font-size:12px; }
+    .ai-attribution,.receipt-id { margin:16px 0 0; padding-top:14px; border-top:1px solid var(--line); color:var(--muted); font:11px/1.6 var(--mono); overflow-wrap:anywhere; }
+    .receipt-id { margin-top:0; border-top:0; padding-top:0; }
+    .result-error { margin:0; padding:14px; border:1px solid #6d3a35; border-radius:6px; background:#251714; color:#ffb4a8; }
+    .install-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-top:18px; padding:24px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .install-strip strong { font-size:15px; }
+    .install-strip p { margin:7px 0 0; color:var(--muted); font-size:13px; line-height:1.6; }
+    .install-strip .button { flex:none; }
+    .footer { margin-top:64px; padding:28px 0 36px; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:12px; }
+    .footer-links { display:flex; flex-wrap:wrap; gap:18px; font-family:var(--mono); }
+    .footer a:hover { color:var(--accent); }
+    @media (max-width:900px) { .demo-options { grid-template-columns:1fr 1fr; } .comparison { grid-template-columns:1fr; } }
+    @media (max-width:620px) {
+      .shell { width:calc(100% - 28px); }
+      .topbar { align-items:flex-start; flex-direction:column; padding:18px 0; gap:14px; }
+      .nav { width:100%; justify-content:space-between; gap:12px; }
+      .languages { padding-left:10px; }
+      .hero { padding:44px 0 38px; }
+      h1 { font-size:clamp(38px,11vw,52px); }
+      .hero-copy { font-size:15px; }
+      .section-head,.install-strip,.footer { align-items:flex-start; flex-direction:column; }
+      .section-note { white-space:normal; }
+      .demo-input,.demo-output { padding:22px 20px; }
+      .demo-meta { flex-direction:column; }
+      .demo-limits { display:block; margin:12px 0 0; }
+      .dimensions { grid-template-columns:1fr 1fr; }
+      .rewrite { grid-template-columns:1fr; }
+      .rewrite .button { justify-self:start; }
     }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-      -webkit-font-smoothing: antialiased;
-    }
-    a { color: inherit; text-decoration: none; }
-    code { font-family: var(--mono); }
-    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
-    .topbar {
-      min-height: 76px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--line);
-      gap: 24px;
-    }
-    .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; letter-spacing: -0.03em; }
-    .brand-mark { width: 30px; height: 30px; color: var(--accent); }
-    .brand span { color: var(--muted); font-weight: 500; }
-    .nav { display: flex; align-items: center; gap: 26px; color: var(--muted); font-size: 13px; }
-    .nav a:hover { color: var(--text); }
-    .nav .api-link { color: var(--accent); font-family: var(--mono); }
-    .hero {
-      position: relative;
-      padding: 88px 0 64px;
-      border-bottom: 1px solid var(--line);
-      overflow: hidden;
-    }
-    .hero::after {
-      content: "";
-      position: absolute;
-      width: 420px;
-      height: 420px;
-      right: -120px;
-      top: -180px;
-      border: 1px solid #36432b;
-      border-radius: 50%;
-      box-shadow: 0 0 0 64px #11170f, 0 0 0 65px #293421, 0 0 0 128px #0e130d, 0 0 0 129px #202a1a;
-      pointer-events: none;
-    }
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      color: var(--accent);
-      font: 11px/1.2 var(--mono);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-    .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px #c7f36b88; }
-    h1 { max-width: 790px; margin: 24px 0 22px; font-size: clamp(48px, 7vw, 88px); line-height: 0.98; letter-spacing: -0.065em; font-weight: 720; }
-    h1 span { color: var(--muted); }
-    .hero-copy { max-width: 620px; margin: 0; color: var(--muted); font-size: 17px; line-height: 1.7; }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
-    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; font-weight: 650; }
-    .button.primary { background: var(--accent); color: var(--accent-dark); border-color: var(--accent); }
-    .button.secondary:hover { border-color: var(--muted); background: var(--surface); }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
-    .stat { padding: 26px 0; }
-    .stat + .stat { border-left: 1px solid var(--line); padding-left: 28px; }
-    .stat-value { font: 26px/1 var(--mono); color: var(--text); }
-    .stat-label { margin-top: 9px; color: var(--muted); font-size: 12px; }
-    section { padding: 68px 0 0; }
-    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 26px; }
-    .section-kicker { color: var(--accent); font: 11px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
-    h2 { margin: 10px 0 0; font-size: 30px; letter-spacing: -0.04em; }
-    .section-note { color: var(--muted); font: 12px/1.5 var(--mono); }
-    .bot-grid { display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-    .bot-card { min-height: 284px; background: var(--surface); }
-    .bot-card + .bot-card { border-left: 1px solid var(--line); }
-    .bot-index { padding: 20px 24px; border-bottom: 1px solid var(--line); color: var(--muted); font: 11px/1 var(--mono); }
-    .bot-body { padding: 26px 24px; }
-    .bot-id { color: var(--muted); font: 11px/1.5 var(--mono); overflow-wrap: anywhere; }
-    h3 { margin: 12px 0; font-size: 20px; letter-spacing: -0.025em; }
-    .bot-body p, .agent-card > p { min-height: 68px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
-    .skill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
-    .skill-row code { padding: 6px 8px; background: var(--accent-dark); color: var(--accent); border-radius: 4px; font-size: 11px; }
-    .agent-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    .agent-card { padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
-    .agent-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .version { flex: none; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font: 11px/1 var(--mono); }
-    .skill-list { list-style: none; padding: 18px 0 0; margin: 22px 0 0; border-top: 1px solid var(--line); }
-    .skill-list li { display: grid; gap: 8px; }
-    .skill-list strong { font-size: 13px; }
-    .skill-list li > span { color: var(--muted); font-size: 13px; line-height: 1.6; }
-    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
-    .tag { color: #bdc8c0; font: 10px/1 var(--mono); padding: 5px 7px; background: var(--surface-2); border-radius: 3px; }
-    .demo-shell { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
-    .demo-input, .demo-output { padding: 28px; }
-    .demo-input { border-right: 1px solid var(--line); }
-    .demo-input > label { display: block; margin-bottom: 14px; font-size: 14px; font-weight: 650; }
-    .demo-input textarea { width: 100%; min-height: 210px; resize: vertical; padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 14px/1.7 var(--sans); }
-    .demo-input textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .demo-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-    .demo-options label { display: grid; gap: 7px; color: var(--muted); font: 11px/1.4 var(--mono); }
-    .demo-options select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--text); font: 12px/1.4 var(--sans); }
-    .demo-options select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .demo-meta { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0 20px; color: var(--muted); font: 11px/1.5 var(--mono); }
-    .demo-input .button { cursor: pointer; }
-    .demo-input .button:disabled { cursor: wait; opacity: 0.65; }
-    .demo-limits { margin: 14px 0 0; color: var(--muted); font: 11px/1.6 var(--mono); }
-    .demo-output { min-width: 0; background: var(--surface-2); }
-    .output-label { padding-bottom: 16px; border-bottom: 1px solid var(--line); color: var(--accent); font: 11px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
-    #demo-result { padding-top: 22px; color: var(--muted); font-size: 14px; line-height: 1.7; }
-    .demo-placeholder { max-width: 360px; }
-    .score-row { display: flex; align-items: end; gap: 12px; margin-bottom: 22px; }
-    .score-value { color: var(--accent); font: 54px/0.9 var(--mono); letter-spacing: -0.06em; }
-    .score-label { color: var(--muted); font: 11px/1.4 var(--mono); text-transform: uppercase; }
-    .result-group { margin-top: 18px; }
-    .result-group h4 { margin: 0 0 8px; color: var(--text); font-size: 12px; }
-    .result-group ul { margin: 0; padding-left: 18px; }
-    .result-group li + li { margin-top: 6px; }
-    .audience-fit { margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--line); }
-    .audience-fit strong { display: block; margin-bottom: 6px; color: var(--text); font-size: 12px; }
-    .result-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
-    .ai-attribution { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font: 11px/1.6 var(--mono); }
-    .result-error { margin: 0; padding: 14px; border: 1px solid #6d3a35; border-radius: 6px; background: #251714; color: #ffb4a8; }
-    .demo-conversion { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 16px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; }
-    .demo-conversion strong { font-size: 14px; }
-    .demo-conversion p { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
-    .demo-conversion .button { flex: none; }
-    .leaderboard { margin-top: 68px; padding: 34px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
-    .leaderboard .section-head { margin-bottom: 22px; }
-    .live-state { display: flex; align-items: center; gap: 8px; color: var(--muted); font: 11px/1.4 var(--mono); }
-    .empty-state { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px 0 4px; border-top: 1px solid var(--line); }
-    .empty-title { font-size: 15px; font-weight: 650; }
-    .empty-copy { margin-top: 7px; color: var(--muted); font-size: 13px; line-height: 1.6; }
-    .empty-code { color: var(--accent); font: 12px/1.5 var(--mono); }
-    .metrics-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .metrics-table th, .metrics-table td { padding: 14px 10px; border-top: 1px solid var(--line); text-align: left; }
-    .metrics-table th { color: var(--muted); font: 10px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
-    .footer { margin-top: 76px; padding: 30px 0 36px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 12px; }
-    .footer-links { display: flex; flex-wrap: wrap; gap: 18px; font-family: var(--mono); }
-    .footer a:hover { color: var(--accent); }
-    @media (max-width: 860px) {
-      .bot-grid, .agent-grid, .demo-shell { grid-template-columns: 1fr; }
-      .bot-card + .bot-card { border-left: 0; border-top: 1px solid var(--line); }
-      .bot-card { min-height: auto; }
-      .bot-body p, .agent-card > p { min-height: auto; }
-      .demo-input { border-right: 0; border-bottom: 1px solid var(--line); }
-      .nav a:not(.api-link) { display: none; }
-      .hero::after { opacity: 0.45; }
-    }
-    @media (max-width: 560px) {
-      .shell { width: min(100% - 28px, 1180px); }
-      .hero { padding: 58px 0 44px; }
-      h1 { font-size: clamp(34px, 10.8vw, 44px); overflow-wrap: break-word; }
-      .hero-copy { font-size: 15px; }
-      .stats { grid-template-columns: 1fr; }
-      .stat + .stat { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; }
-      .section-head, .empty-state, .footer, .demo-conversion { align-items: flex-start; flex-direction: column; }
-      .demo-input, .demo-output { padding: 22px 20px; }
-      .leaderboard { padding: 24px 20px; }
-      .metrics-table { min-width: 520px; }
-      .table-wrap { overflow-x: auto; }
-    }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-    ${pricingStyles}
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+    ${options.showPricing ? pricingStyles : ""}
   </style>
 </head>
 <body>
   <header class="shell topbar">
-    <a class="brand" href="/" aria-label="GrokBotHub home">
-      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <path d="M7 8.5 16 3l9 5.5v10L16 24l-9-5.5v-10Z" stroke="currentColor" stroke-width="1.5"/>
-        <path d="m7 8.5 9 5.4 9-5.4M16 14v10M11.5 26.5 16 29l4.5-2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="16" cy="14" r="2.5" fill="currentColor"/>
-      </svg>
-      <div>GrokBotHub <span>/ Creator Tools</span></div>
-    </a>
+    <a class="brand" href="/?lang=${language}">GrokBotHub <span>/ Hook Tools</span></a>
     <nav class="nav" aria-label="Main navigation">
-      <a href="#demo">Live demo</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#bots">Bots</a>
-      <a href="#agent-cards">Discovery</a>
-      <a href="#leaderboard">Telemetry</a>
-      <a class="api-link" href="/health">API STATUS ↗</a>
+      <a href="#demo">${t.navDemo}</a>
+      <a href="/install?lang=${language}" data-install-link>${t.navInstall}</a>
+      <a href="/pricing?lang=${language}">${t.navPricing}</a>
+      <div class="languages" aria-label="Language">
+        <a href="${options.showPricing ? "/pricing" : "/"}?lang=id" aria-current="${language === "id"}">ID</a>
+        <a href="${options.showPricing ? "/pricing" : "/"}?lang=en" aria-current="${language === "en"}">EN</a>
+        <a href="${options.showPricing ? "/pricing" : "/"}?lang=zh" aria-current="${language === "zh"}">中文</a>
+      </div>
     </nav>
   </header>
-
   <main class="shell">
     <section class="hero">
-      <div class="eyebrow"><span class="pulse"></span> Edge network · operational</div>
-      <h1>Opening hooks, analyzed.<br><span>In your language.</span></h1>
-      <p class="hero-copy">Analyze short-drama openings with Grok in Indonesian, English, or Chinese. Choose the audience and platform, test a real API call, and review AI-generated suggestions before publishing.</p>
-      <div class="hero-actions">
-        <a class="button primary" href="#demo">Try the live demo →</a>
-        <a class="button secondary" href="/.well-known/agent-card.json">Raw discovery cards</a>
-      </div>
+      <h1>${t.heroTitle}</h1>
+      <p class="hero-copy">${t.heroCopy}</p>
+      <div class="hero-actions"><a class="button primary" href="#demo">${t.primary}</a></div>
     </section>
-
-    <div class="stats" aria-label="Service summary">
-      <div class="stat"><div class="stat-value">${String(bots.length).padStart(2, "0")}</div><div class="stat-label">Public analysis blueprints</div></div>
-      <div class="stat"><div class="stat-value">id / en / zh</div><div class="stat-label">Localized discovery and output</div></div>
-      <div class="stat"><div class="stat-value">Edge</div><div class="stat-label">Cloudflare Workers + KV</div></div>
-    </div>
-
     <section id="demo">
-      <div class="section-head">
-        <div><div class="section-kicker">01 / Live demo</div><h2>Test your opening hook</h2></div>
-        <div class="section-note">Real Grok analysis · no sign-up</div>
-      </div>
+      <div class="section-head"><h2>${t.demoTitle}</h2><div class="section-note">${t.demoNote}</div></div>
       <div class="demo-shell">
         <form id="demo-form" class="demo-input">
-          <label for="script-text">Paste the opening of your short drama</label>
-          <textarea id="script-text" name="script_text" minlength="10" maxlength="1200" required>“You called me a maid?” Elena ripped off her apron at the billionaire’s wedding. “Then why does your prenup name me as the real heir?”</textarea>
+          <label for="script-text">${t.inputLabel}</label>
+          <textarea id="script-text" name="script_text" minlength="10" maxlength="1200" required>${INDONESIAN_EXAMPLE}</textarea>
           <div class="demo-options" aria-label="Analysis options">
-            <label>Input language
-              <select id="input-language" name="input_language">
-                <option value="auto" selected>Auto detect</option>
-                <option value="id">Bahasa Indonesia</option>
-                <option value="en">English</option>
-                <option value="zh">中文</option>
-              </select>
-            </label>
-            <label>Target audience
-              <select id="target-audience" name="target_audience">
-                <option value="" selected>Auto from language</option>
-                <option value="ID_GenZ">Indonesia · Gen Z</option>
-                <option value="ID_Millennial">Indonesia · Millennial</option>
-                <option value="US_GenZ">US · Gen Z</option>
-                <option value="CN_GenZ">China · Gen Z</option>
-              </select>
-            </label>
-            <label>Platform
-              <select id="demo-platform" name="platform">
-                <option value="tiktok">TikTok</option>
-                <option value="reels" selected>Reels</option>
-                <option value="youtube_shorts">YouTube Shorts</option>
-                <option value="dramabox">DramaBox</option>
-                <option value="shortmax">ShortMax</option>
-                <option value="reelshort">ReelShort</option>
-              </select>
-            </label>
-            <label>Output language
-              <select id="output-language" name="output_language">
-                <option value="" selected>Match input</option>
-                <option value="id">Bahasa Indonesia</option>
-                <option value="en">English</option>
-                <option value="zh">中文</option>
-              </select>
-            </label>
+            <label>${t.inputLanguage}<select id="input-language" name="input_language"><option value="auto" selected>${t.autoDetect}</option><option value="id">Bahasa Indonesia</option><option value="en">English</option><option value="zh">中文</option></select></label>
+            <label>${t.audience}<select id="target-audience" name="target_audience"><option value="" selected>${t.autoAudience}</option><option value="ID_GenZ">Indonesia · Gen Z</option><option value="ID_Millennial">Indonesia · Millennial</option><option value="US_GenZ">US · Gen Z</option><option value="CN_GenZ">China · Gen Z</option></select></label>
+            <label>${t.platform}<select id="demo-platform" name="platform"><option value="tiktok" selected>TikTok</option><option value="reels">Reels</option><option value="youtube_shorts">YouTube Shorts</option><option value="dramabox">DramaBox</option><option value="shortmax">ShortMax</option><option value="reelshort">ReelShort</option></select></label>
+            <label>${t.outputLanguage}<select id="output-language" name="output_language"><option value="" selected>${t.matchInput}</option><option value="id">Bahasa Indonesia</option><option value="en">English</option><option value="zh">中文</option></select></label>
           </div>
-          <div class="demo-meta"><span>Indonesian input defaults to ID Gen Z</span><span id="character-count">0 / 1200</span></div>
-          <button id="demo-submit" class="button primary" type="submit">Analyze my hook →</button>
-          <p class="demo-limits">3 demo calls per IP/hour · 20 global/day</p>
+          <div class="demo-meta"><span>${t.defaultNote}</span><span id="character-count">0 / 1200</span></div>
+          <button id="demo-submit" class="button primary" type="submit">${t.analyze}</button>
+          <p class="demo-limits">${t.limits}</p>
         </form>
-        <div class="demo-output" aria-live="polite" aria-atomic="true">
-          <div class="output-label">Grok analysis</div>
-          <div id="demo-result"><div class="demo-placeholder">Your hook score, strengths, and specific rewrites will appear here after a real API call.</div></div>
+        <div class="demo-output" aria-live="polite">
+          <div id="demo-result"><div>${t.placeholder}</div></div>
         </div>
       </div>
-      <div class="demo-conversion">
-        <div><strong>Need this inside your writers’ room?</strong><p>Connect your scripts, brand rules, and review workflow to a production API.</p></div>
-        <a class="button secondary" href="#pricing">View API plans →</a>
+      <div class="install-strip">
+        <div><strong>${t.installTitle}</strong><p>${t.installCopy}</p></div>
+        <a class="button secondary" href="/install?lang=${language}" data-install-link>${t.installButton}</a>
       </div>
     </section>
-
-    ${renderPricingSection(options.checkoutEnabled)}
-
-    <section id="bots">
-      <div class="section-head">
-        <div><div class="section-kicker">03 / Registry</div><h2>Public analysis blueprints</h2></div>
-        <a class="section-note" href="/v1/bots">GET /v1/bots ↗</a>
-      </div>
-      <div class="bot-grid">${botCards}</div>
-    </section>
-
-    <section id="agent-cards">
-      <div class="section-head">
-        <div><div class="section-kicker">04 / Discovery</div><h2>Legacy discovery cards</h2></div>
-        <a class="section-note" href="/.well-known/agent-card.json">.well-known/agent-card.json ↗</a>
-      </div>
-      <div class="agent-grid">${agentCards}</div>
-    </section>
-
-    <section id="leaderboard" class="leaderboard" aria-live="polite">
-      <div class="section-head">
-        <div><div class="section-kicker">05 / Telemetry</div><h2>Telemetry leaderboard</h2></div>
-        <div class="live-state"><span class="pulse"></span><span id="updated-at">Verified results only</span></div>
-      </div>
-      <div id="leaderboard-content">
-        <div class="empty-state">
-          <div><div class="empty-title">No verified results yet</div><div class="empty-copy">Rankings require verified outcome data. Raw invocation counts are not presented as verified outcomes.</div></div><div class="empty-code">entries: []</div>
-        </div>
-      </div>
-    </section>
+    ${options.showPricing ? renderPricingSection(options.checkoutEnabled ?? false) : ""}
   </main>
-
   <footer class="shell footer">
-    <div>GrokBotHub · Multilingual AI analysis</div>
-    <div class="footer-links">
-      <a href="/health">/health</a>
-      <a href="/v1/bots">/v1/bots</a>
-      <a href="/v1/leaderboard">/v1/leaderboard</a>
-      <a href="/terms">Terms</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/refunds">Refunds</a>
-      <a href="https://github.com/vfvincentwong2026/grok-bot-hub">GitHub ↗</a>
-    </div>
+    <div>GrokBotHub · AI-assisted hook analysis</div>
+    <div class="footer-links"><a href="/health">/health</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="https://github.com/vfvincentwong2026/grok-bot-hub">GitHub ↗</a></div>
   </footer>
-
   <script>
-    ${pricingScript}
-
+    ${analyticsScript}
+    ${options.showPricing ? pricingScript : ""}
     (function setupDemo() {
       const form = document.getElementById("demo-form");
       const input = document.getElementById("script-text");
@@ -386,70 +310,94 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
       const button = document.getElementById("demo-submit");
       const result = document.getElementById("demo-result");
       if (!form || !input || !count || !button || !result) return;
+      const labels = ${JSON.stringify(t)};
+      const optionIds = ["input-language", "target-audience", "demo-platform", "output-language"];
 
-      function updateCount() {
-        count.textContent = input.value.length + " / 1200";
+      window.gbhTrack("landing_view");
+      document.querySelectorAll("[data-install-link]").forEach(function (link) {
+        link.addEventListener("click", function () { window.gbhTrack("install_click"); });
+      });
+
+      try {
+        const saved = JSON.parse(localStorage.getItem("gbh_demo_options") || "null");
+        if (saved && typeof saved === "object") {
+          optionIds.forEach(function (id) {
+            const select = document.getElementById(id);
+            if (saved[id] !== undefined && select.querySelector('option[value="' + saved[id] + '"]')) select.value = saved[id];
+          });
+        }
+      } catch {}
+      function saveOptions() {
+        try {
+          const values = {};
+          optionIds.forEach(function (id) { values[id] = document.getElementById(id).value; });
+          localStorage.setItem("gbh_demo_options", JSON.stringify(values));
+        } catch {}
       }
+      optionIds.forEach(function (id) { document.getElementById(id).addEventListener("change", saveOptions); });
 
+      function updateCount() { count.textContent = input.value.length + " / 1200"; }
+      function element(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = String(text);
+        return node;
+      }
       function appendList(title, items) {
         if (!Array.isArray(items) || !items.length) return;
-        const group = document.createElement("div");
-        group.className = "result-group";
-        const heading = document.createElement("h4");
-        heading.textContent = title;
+        const group = element("div", "result-group");
+        group.appendChild(element("h3", "", title));
         const list = document.createElement("ul");
-        for (const item of items) {
-          const li = document.createElement("li");
-          li.textContent = String(item);
-          list.appendChild(li);
-        }
-        group.append(heading, list);
+        items.forEach(function (item) { list.appendChild(element("li", "", item)); });
+        group.appendChild(list);
         result.appendChild(group);
       }
-
+      async function copyRewrite(text, copyButton) {
+        try {
+          await navigator.clipboard.writeText(text);
+          copyButton.textContent = labels.copied;
+          window.gbhTrack("rewrite_copy");
+          setTimeout(function () { copyButton.textContent = labels.copy; }, 1600);
+        } catch {
+          copyButton.textContent = labels.failed;
+        }
+      }
       function renderAnalysis(analysis, attribution) {
         result.replaceChildren();
-        function appendAttribution() {
-          if (!attribution) return;
-          const note = document.createElement("p");
-          note.className = "ai-attribution";
-          note.textContent = String(attribution);
-          result.appendChild(note);
-        }
-        if (analysis && typeof analysis === "object" && !Array.isArray(analysis)) {
-          const score = Number(analysis.hook_score);
-          if (Number.isFinite(score)) {
-            const row = document.createElement("div");
-            row.className = "score-row";
-            const value = document.createElement("div");
-            value.className = "score-value";
-            value.textContent = String(score);
-            const label = document.createElement("div");
-            label.className = "score-label";
-            label.textContent = "Hook score / 100";
-            row.append(value, label);
-            result.appendChild(row);
-          }
-          appendList("What works", analysis.strengths);
-          appendList("Make it stronger", analysis.suggestions);
-          if (analysis.audience_fit) {
-            const fit = document.createElement("p");
-            fit.className = "audience-fit";
-            const label = document.createElement("strong");
-            label.textContent = "Audience fit";
-            fit.append(label, document.createTextNode(String(analysis.audience_fit)));
-            result.appendChild(fit);
-          }
-          if (result.childElementCount) {
-            appendAttribution();
-            return;
-          }
-        }
-        const text = document.createElement("pre");
-        text.className = "result-text";
-        text.textContent = typeof analysis === "string" ? analysis : JSON.stringify(analysis, null, 2);
-        result.appendChild(text);
-        appendAttribution();
+        const row = element("div", "score-row");
+        row.append(element("div", "score-value", analysis.hook_score), element("div", "score-label", labels.score));
+        result.appendChild(row);
+
+        const dimensions = element("div", "dimensions");
+        ["conflict", "identity_reveal", "curiosity_gap", "emotion"].forEach(function (key) {
+          const item = element("div", "dimension");
+          item.append(element("span", "", labels.dimensions[key]), element("strong", "", analysis.dimensions[key]));
+          dimensions.appendChild(item);
+        });
+        result.appendChild(dimensions);
+
+        const comparison = element("div", "comparison");
+        const original = element("div");
+        original.append(element("h3", "", labels.original), element("div", "original-text", input.value));
+        const rewrites = element("div");
+        rewrites.appendChild(element("h3", "", labels.rewrites));
+        analysis.rewritten_hooks.forEach(function (text) {
+          const article = element("article", "rewrite");
+          const copyButton = element("button", "button secondary", labels.copy);
+          copyButton.type = "button";
+          copyButton.addEventListener("click", function () { copyRewrite(text, copyButton); });
+          article.append(element("p", "", text), copyButton);
+          rewrites.appendChild(article);
+        });
+        comparison.append(original, rewrites);
+        result.appendChild(comparison);
+        appendList(labels.strengths, analysis.strengths);
+        appendList(labels.suggestions, analysis.suggestions);
+        const fit = element("p", "audience-fit");
+        fit.append(element("strong", "", labels.audienceFit), document.createTextNode(analysis.audience_fit));
+        result.appendChild(fit);
+        result.appendChild(element("p", "receipt-id", labels.receipt + ": " + analysis.receipt_id));
+        if (attribution) result.appendChild(element("p", "ai-attribution", attribution));
       }
 
       updateCount();
@@ -457,116 +405,63 @@ export function renderHome(options: { checkoutEnabled: boolean } = { checkoutEna
       form.addEventListener("submit", async function (event) {
         event.preventDefault();
         if (!form.reportValidity()) return;
+        saveOptions();
+        window.gbhTrack("demo_start");
         const controller = new AbortController();
-        const slowTimer = setTimeout(function () {
-          result.textContent = "Still analyzing audience fit and rewrite options…";
-        }, 5000);
-        const verySlowTimer = setTimeout(function () {
-          result.textContent = "This is taking longer than usual. We will stop at 20 seconds so you can retry.";
-        }, 12000);
+        const slowTimer = setTimeout(function () { result.textContent = labels.slow; }, 5000);
+        const verySlowTimer = setTimeout(function () { result.textContent = labels.verySlow; }, 12000);
         const timeoutTimer = setTimeout(function () { controller.abort(); }, 20000);
         button.disabled = true;
-        button.textContent = "Analyzing with Grok…";
+        button.textContent = labels.working;
         form.setAttribute("aria-busy", "true");
-        result.textContent = "Reading your opening and scoring the first three seconds…";
+        result.textContent = labels.analyzing;
         try {
           const payload = {
             script_text: input.value,
             input_language: document.getElementById("input-language").value,
             target_audience: document.getElementById("target-audience").value,
             output_language: document.getElementById("output-language").value,
-            platform: document.getElementById("demo-platform").value,
+            platform: document.getElementById("demo-platform").value
           };
-          for (const key of ["input_language", "target_audience", "output_language"]) {
-            if (!payload[key]) delete payload[key];
-          }
-          const response = await fetch("/v1/demo/invoke", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-          });
+          ["input_language", "target_audience", "output_language"].forEach(function (key) { if (!payload[key]) delete payload[key]; });
+          const response = await fetch("/v1/demo/invoke", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(payload), signal:controller.signal });
           const data = await response.json().catch(function () { return null; });
           if (!response.ok || !data?.ok) {
-            const messages = {
-              400: "Enter between 10 and 1200 characters and check the analysis options.",
-              403: "Please run the demo from this page.",
-              429: "Demo limit reached. Try again later or request production access.",
-              502: "Grok is temporarily unavailable. Please try again.",
-            };
-            throw new Error(messages[response.status] || data?.error || "The demo could not be completed.");
+            const messages = { 400:labels.invalid, 403:labels.forbidden, 429:labels.limited, 502:labels.unavailable };
+            throw new Error(messages[response.status] || data?.error || labels.failed);
           }
           renderAnalysis(data.analysis, data.attribution);
         } catch (error) {
-          const message = document.createElement("p");
-          message.className = "result-error";
-          message.textContent = error instanceof Error && error.name === "AbortError"
-            ? "The analysis exceeded 20 seconds. Please retry; failed analyses do not consume your demo limit."
-            : error instanceof Error ? error.message : "The demo could not be completed.";
-          result.replaceChildren(message);
+          const message = error instanceof Error && error.name === "AbortError" ? labels.timeout : error instanceof Error ? error.message : labels.failed;
+          result.replaceChildren(element("p", "result-error", message));
         } finally {
           clearTimeout(slowTimer);
           clearTimeout(verySlowTimer);
           clearTimeout(timeoutTimer);
           button.disabled = false;
-          button.textContent = "Analyze my hook →";
+          button.textContent = labels.analyze;
           form.removeAttribute("aria-busy");
         }
       });
     })();
-
-    (async function loadLeaderboard() {
-      const container = document.getElementById("leaderboard-content");
-      const updatedAt = document.getElementById("updated-at");
-      try {
-        const response = await fetch("/v1/leaderboard", { headers: { "Accept": "application/json" } });
-        if (!response.ok) throw new Error("Leaderboard request failed");
-        const data = await response.json();
-        const entries = Array.isArray(data.entries) ? data.entries : [];
-        updatedAt.textContent = data.updated_at ? "Metrics updated " + new Date(data.updated_at).toLocaleString() : "Verified results only";
-        if (!entries.length) {
-          container.innerHTML = '<div class="empty-state"><div><div class="empty-title">No verified results yet</div><div class="empty-copy">Rankings require verified outcome data. Raw invocation counts are not presented as verified outcomes.</div></div><div class="empty-code">entries: []</div></div>';
-          return;
+    (function trackUpgradeView() {
+      const pricing = document.getElementById("pricing");
+      if (!pricing || !("IntersectionObserver" in window)) return;
+      let tracked = false;
+      const observer = new IntersectionObserver(function (entries) {
+        if (!tracked && entries.some(function (entry) { return entry.isIntersecting; })) {
+          tracked = true;
+          window.gbhTrack("upgrade_view");
+          observer.disconnect();
         }
-        const table = document.createElement("table");
-        table.className = "metrics-table";
-        table.innerHTML = "<thead><tr><th>Bot</th><th>Calls</th><th>Failures</th><th>Avg latency</th><th>Total tokens</th></tr></thead>";
-        const tbody = document.createElement("tbody");
-        for (const entry of entries) {
-          const calls = Number(entry.calls || 0);
-          const row = document.createElement("tr");
-          const values = [
-            entry.bot || entry.name || "Unknown bot",
-            calls,
-            Number(entry.failures || 0),
-            calls ? Math.round(Number(entry.total_latency_ms || 0) / calls) + " ms" : "—",
-            Number(entry.total_tokens || 0),
-          ];
-          for (const value of values) {
-            const cell = document.createElement("td");
-            cell.textContent = String(value);
-            row.appendChild(cell);
-          }
-          tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        const wrapper = document.createElement("div");
-        wrapper.className = "table-wrap";
-        wrapper.appendChild(table);
-        container.replaceChildren(wrapper);
-      } catch (error) {
-        updatedAt.textContent = "Snapshot temporarily unavailable";
-        container.innerHTML = '<div class="empty-state"><div><div class="empty-title">Metrics could not be loaded</div><div class="empty-copy">The registry is still online. Try refreshing this page.</div></div></div>';
-      }
+      }, { threshold:0.2 });
+      observer.observe(pricing);
     })();
   </script>
 </body>
 </html>`;
 
   return new Response(html, {
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=60",
-    },
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60" },
   });
 }

@@ -66,7 +66,8 @@ export const dramaHook: BotBlueprint = {
         "Evaluate for the requested target audience and platform.",
         "Write every natural-language field in the requested output_language (id, en, or zh).",
         "Return STRICT JSON with shape:",
-        '{"hook_score": number 0-100, "strengths": string[], "suggestions": string[], "audience_fit": string}',
+        '{"hook_score": number 0-100, "dimensions": {"conflict": number 0-100, "identity_reveal": number 0-100, "curiosity_gap": number 0-100, "emotion": number 0-100}, "strengths": string[], "suggestions": string[], "rewritten_hooks": [string, string, string], "audience_fit": string}',
+        "Write exactly three rewritten_hooks in the requested output_language; make each substantially stronger than the source opening.",
         "Never add commentary outside the JSON.",
       ].join(" "),
       user: JSON.stringify({

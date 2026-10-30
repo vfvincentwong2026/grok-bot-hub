@@ -1,7 +1,9 @@
 import { AI_ATTRIBUTION } from "./attribution";
 import { handleCheckout, handleCheckoutComplete, isStripeConfigured } from "./billing";
 import { handleDemoInvoke } from "./demo";
+import { handleEvent } from "./events";
 import { renderHome } from "./home";
+import { renderInstallPage, resolvePageLanguage } from "./install";
 import { handleLeaderboard, recordMetric } from "./leaderboard";
 import { renderLegalPage } from "./legal";
 import { handlePaidInvoke } from "./paid";
@@ -29,7 +31,17 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/pricing")) {
-      return renderHome({ checkoutEnabled: isStripeConfigured(env) });
+      const language = resolvePageLanguage(url.searchParams.get("lang") ?? request.headers.get("Accept-Language"));
+      return renderHome({
+        checkoutEnabled: isStripeConfigured(env),
+        language,
+        showPricing: url.pathname === "/pricing",
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/install") {
+      const language = resolvePageLanguage(url.searchParams.get("lang") ?? request.headers.get("Accept-Language"));
+      return renderInstallPage(language, url.origin);
     }
 
     if (request.method === "GET" && ["/terms", "/privacy", "/refunds"].includes(url.pathname)) {
@@ -56,6 +68,10 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/v1/demo/invoke") {
       return handleDemoInvoke(request, env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/events") {
+      return handleEvent(request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/app/invoke") {

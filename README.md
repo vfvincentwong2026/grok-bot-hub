@@ -6,17 +6,21 @@ A Cloudflare Workers service that provides short-drama hook analysis with Grok, 
 
 ## Implemented capabilities
 
-- Short-drama opening analysis through the xAI Responses API.
-- Input language auto-detection for Indonesian, English, and Chinese.
+- Indonesian-first, trilingual landing page (`id` / `en` / `zh`) with a prefilled Indonesian example and remembered demo selections.
+- Short-drama opening analysis through the xAI Responses API with overall and four dimension scores, strengths, suggestions, and exactly three rewritten hooks.
+- Side-by-side original/rewrite comparison, one-click copy, AI attribution, and a result ID. Result IDs are not signed receipts yet.
+- Input language auto-detection for Indonesian, English, and Chinese; Indonesian defaults to `ID_GenZ` + TikTok.
 - Selectable audience, platform, and output language (`id` / `en` / `zh`).
+- First-party analytics in KV with a 90-day TTL: no third-party trackers and no script text in event records.
+- An honest `/install` page: the paid API is available; Grok Bot plugins and MCP are marked as coming soon.
 - Localized bot and Agent Card discovery in English, Indonesian, and Chinese.
-- Public demo limits with best-effort reservation release when AI fails.
+- Public demo limits with best-effort reservation release when AI fails or returns an invalid result.
 - Paid API keys stored as SHA-256 hashes, 30-day expiration, per-key quotas, and failed-call quota refunds.
 - One-time IDR Checkout passes: Creator Rp449,000 / 1,000 analyses and Studio Rp1,499,000 / 5,000 analyses. No automatic renewal.
 - Honest empty states when no leaderboard snapshot or verified outcome data exists.
 - Terms, privacy, and refund pages.
 
-The legacy custom `A2A-v1` invocation route remains available for compatibility and returns `Deprecation: true`. It is not represented as the official A2A protocol. MCP, signed outcome receipts, and verified-result rankings are not implemented yet.
+The legacy custom `A2A-v1` invocation route remains available for compatibility and returns `Deprecation: true`. It is not represented as the official A2A protocol. MCP, Grok Bot plugin packages, signed outcome receipts, and verified-result rankings are not implemented yet.
 
 ## Live service
 
@@ -70,7 +74,7 @@ curl -X POST http://localhost:8787/v1/demo/invoke \
   }'
 ```
 
-With `input_language` omitted or set to `auto`, Indonesian input defaults to `ID_GenZ` and Indonesian output. Explicit options override the defaults:
+With `input_language` omitted or set to `auto`, Indonesian input defaults to `ID_GenZ`, Indonesian output, and TikTok. Other input languages default to Reels. Explicit options override the defaults:
 
 - `input_language`: `auto`, `id`, `en`, `zh`
 - `target_audience`: `ID_GenZ`, `ID_Millennial`, `US_GenZ`, `CN_GenZ`
@@ -91,16 +95,18 @@ curl -X POST http://localhost:8787/v1/app/invoke \
   }'
 ```
 
-Successful AI responses include an `attribution` field. Failed AI calls return an error and refund reserved paid quota.
+Successful AI responses include `dimensions`, three `rewritten_hooks`, `receipt_id`, and `attribution`. Failed AI calls and invalid model output return an error and refund reserved paid quota. The current result ID identifies a response but is not a signed receipt.
 
 ### Discovery and operations
 
 | Method | Endpoint | Current behavior |
 | --- | --- | --- |
 | `GET` | `/health` | Service health |
+| `GET` | `/install` | Honest Grok Bot, MCP, and API integration paths |
 | `GET` | `/v1/bots?lang=id` | Localized public bot list |
 | `GET` | `/.well-known/agent-card.json?lang=zh` | Localized discovery cards |
 | `GET` | `/v1/leaderboard` | Existing snapshot or an honest empty array |
+| `POST` | `/v1/events` | Allowed browser events only; raw script and unsupported fields are rejected |
 | `POST` | `/v1/demo/invoke` | Rate-limited public analysis |
 | `POST` | `/v1/app/invoke` | Paid hook analysis |
 | `POST` | `/v1/billing/checkout` | Stripe Checkout when configured; otherwise 503 |

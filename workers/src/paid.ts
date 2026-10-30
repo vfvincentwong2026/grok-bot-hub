@@ -1,6 +1,8 @@
-import { AnalysisOptionsError, resolveAnalysisOptions } from "./analysis-options";
+import { AnalysisOptionsError, INDONESIAN_EXAMPLE, resolveAnalysisOptions } from "./analysis-options";
+import { extractOutputText, parseHookAnalysis } from "./analysis-result";
 import { AI_ATTRIBUTION } from "./attribution";
 import { hashApiKey } from "./api-keys";
+import { hashScriptText, recordFirstRealCall } from "./events";
 import { recordMetric } from "./leaderboard";
 import { getPaidPlan } from "./plans";
 import { getBot } from "./registry";
@@ -81,27 +83,26 @@ export async function handlePaidInvoke(request: Request, env: PaidEnv): Promise<
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-        max_output_tokens: 500,
+        max_output_tokens: 900,
       }),
     });
     if (!response.ok) throw new Error(`xAI request failed with status ${response.status}`);
 
     const aiResp = (await response.json()) as any;
-    const text = extractOutputText(aiResp);
-    let analysis: unknown = text;
-    try {
-      analysis = JSON.parse(text);
-    } catch {
-      // Keep the plain-text response when the model does not return valid JSON.
-    }
-
+    const receiptId = crypto.randomUUID();
+    const analysis = parseHookAnalysis(extractOutputText(aiResp), receiptId);
     const latency_ms = Date.now() - started;
     const tokens = typeof aiResp?.usage?.total_tokens === "number" ? aiResp.usage.total_tokens : undefined;
-    await recordMetric(env, bot.id, { latency_ms, tokens, ok: true });
+    const scriptHash = await hashScriptText(scriptText);
+    await Promise.allSettled([
+      recordMetric(env, bot.id, { latency_ms, tokens, ok: true }),
+      ...(scriptText !== INDONESIAN_EXAMPLE ? [recordFirstRealCall(env, keyHash, scriptHash)] : []),
+    ]);
     return json({
       ok: true,
       bot: bot.id,
       analysis,
+      receipt_id: receiptId,
       attribution: AI_ATTRIBUTION,
       options,
       usage: {
@@ -137,19 +138,6 @@ async function updateQuota(
   });
   if (!response.ok) throw new Error("Usage counter unavailable");
   return (await response.json()) as { allowed: boolean; used: number; remaining: number };
-}
-
-function extractOutputText(response: any): string {
-  if (typeof response?.output_text === "string") return response.output_text;
-  const output = Array.isArray(response?.output) ? response.output : [];
-  const texts: string[] = [];
-  for (const item of output) {
-    if (item?.type !== "message" || !Array.isArray(item.content)) continue;
-    for (const part of item.content) {
-      if (part?.type === "output_text" && typeof part.text === "string") texts.push(part.text);
-    }
-  }
-  return texts.join("\n");
 }
 
 function json(data: unknown, status = 200): Response {

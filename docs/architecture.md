@@ -4,21 +4,25 @@
 
 1. **Cloudflare Worker (`workers/src`)**: HTTP routes, authentication, input validation, xAI Responses API calls, demo throttling, paid quota handling, billing, and HTML pages.
 2. **Bot blueprints (`bots/`)**: localized discovery metadata and prompt builders. Only Drama Hook and sample-only Viral Radar are publicly registered.
-3. **Cloudflare KV**: API-key hashes and records, metrics, demo counters, and optional leaderboard snapshots.
+3. **Cloudflare KV**: API-key hashes and records, metrics, demo counters, first-party analytics events, and optional leaderboard snapshots.
 4. **UsageCounter Durable Object**: atomic paid-quota consumption and refunds.
 5. **Stripe Checkout (optional)**: one-time IDR 30-day passes when explicitly configured.
 
 ## Public demo flow
 
-`POST /v1/demo/invoke` → same-origin check → script/options validation → best-effort KV reservation → localized `buildPrompt()` → xAI Responses API → metrics + attribution.
+`POST /v1/demo/invoke` → same-origin check → script/options validation → best-effort KV reservation → localized `buildPrompt()` → xAI Responses API → result schema validation → metrics + `demo_done` event + attribution + result ID.
 
-AI failures release the reserved demo counters. KV throttling is best-effort, not an atomic distributed rate limiter.
+The result contains four dimension scores and exactly three rewritten hooks. AI failures or invalid model output release the reserved demo counters. KV throttling is best-effort, not an atomic distributed rate limiter.
 
 ## Paid flow
 
-`POST /v1/app/invoke` → hash API key → active plan + expiry check → script/options validation → atomic quota reservation → localized `buildPrompt()` → xAI Responses API → metrics + attribution.
+`POST /v1/app/invoke` → hash API key → active plan + expiry check → script/options validation → atomic quota reservation → localized `buildPrompt()` → xAI Responses API → result schema validation → metrics + first real-call event + attribution + result ID.
 
-AI failures refund the reserved paid quota through the Durable Object.
+AI failures or invalid model output refund the reserved paid quota through the Durable Object. Result IDs are response identifiers, not signed receipts.
+
+## First-party analytics
+
+Browser events are limited to `landing_view`, `demo_start`, `rewrite_copy`, `install_click`, and `upgrade_view`. The server records `demo_done`, `first_real_call`, `checkout_start`, and `paid`; clients cannot submit those server-authoritative events. `first_real_call` is recorded once per paid key and excludes the built-in Indonesian example. Records expire after 90 days and may contain duration, plan, install method, or a full SHA-256 script hash, never the script text. There are no third-party trackers.
 
 ## Legacy compatibility flow
 
