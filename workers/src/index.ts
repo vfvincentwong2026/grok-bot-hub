@@ -73,6 +73,24 @@ export default {
 
     return json({ ok: false, error: "not_found" }, 404);
   },
+
+  // Cron trigger handler for wrangler.toml `[triggers] crons = ["*/5 * * * *"]`.
+  // docs/quickstart.md describes this as the scheduled leaderboard snapshot, but no
+  // snapshot builder exists yet, so this is intentionally a safe heartbeat no-op:
+  // no xAI calls, no KV writes, no fabricated data.
+  async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+    try {
+      console.log(
+        JSON.stringify({
+          event: "cron_heartbeat",
+          cron: controller.cron,
+          scheduled_time: new Date(controller.scheduledTime).toISOString(),
+        }),
+      );
+    } catch (err) {
+      console.error("scheduled handler error", err instanceof Error ? err.message : String(err));
+    }
+  },
 };
 
 async function handleInvoke(request: Request, env: Env): Promise<Response> {
