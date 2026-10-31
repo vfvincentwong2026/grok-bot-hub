@@ -6,10 +6,10 @@
 
 | 项目 | 记录 |
 | --- | --- |
-| Cloudflare Version ID | `997ec58c-f08b-4844-bb46-52ca96615f30` |
+| Cloudflare Version ID | `997ec58c-f08b-4844-bb46-52ca96615f30`（据巡检记录，待 Vincent 在 Cloudflare 控制台确认） |
 | 上线时间 | 2026-10-31 14:27（UTC+8） |
 | 上线依据 | 巡检记录的 `version_upload`，100% 流量 |
-| 回滚目标（上线前版本） | `f617a244-7518-4a24-8482-1acacea38818` |
+| 回滚目标（上线前版本） | `f617a244-7518-4a24-8482-1acacea38818`（据巡检记录，待 Vincent 在 Cloudflare 控制台确认） |
 | 相关 CI 记录 | GitHub CI run `41176543830`，`main@869e0c2`，2026-10-31 14:25（UTC+8）显示 success |
 
 ## 无法独立确认的事项
@@ -27,4 +27,4 @@
 
 ## 结论
 
-回滚目标按巡检记录确认为 `f617a244-7518-4a24-8482-1acacea38818`。除上表明确列出的巡检事实外，其余部署登记项均缺少可靠历史证据，不能补写成“已通过”或“已批准”。本轮后续部署必须在新提交上依次通过 `npm ci → npm run lint → npx tsc --noEmit → npm run test`，取得 Vincent 明确写明“批准部署 `<commit>`”的书面批准后，才可部署并重新登记。
+据巡检记录，回滚目标为 `f617a244-7518-4a24-8482-1acacea38818`，待 Vincent 在 Cloudflare 控制台（Workers → Deployments）确认；确认前不得作为回滚依据。除上表明确列出的巡检事实外，其余部署登记项均缺少可靠历史证据，不能补写成“已通过”或“已批准”。本轮后续部署必须在新提交上依次通过 `npm ci → npm run lint → npx tsc --noEmit → npm run test`，取得 Vincent 明确写明“批准部署 `<commit>`”的书面批准后，才可部署并重新登记。
