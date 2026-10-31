@@ -20,6 +20,12 @@ The result contains four dimension scores and exactly three rewritten hooks. AI 
 
 Free MCP calls require no API key and share the browser limits: 3 calls per IP each hour and 20 global calls per day. Non-example calls record first activation once per hashed IP. Quota exhaustion returns `isError: true` with a pricing link. See [the MCP guide](./mcp.md).
 
+## Model usage ledger
+
+After xAI returns a JSON response for a browser demo or MCP `analyze_hook` call, the Worker writes one privacy-safe usage record to `LEADERBOARD_KV` under `usage:llm:<UTC-date>:<receipt-id>`. Records include the source, model, token breakdown, status, latency, receipt ID, timestamp, `is_example`, pricing version, and estimated cost in integer micro-USD. Invalid model output is recorded as `parse_failed`; a ledger write failure does not change the user response. Records and KV metadata expire after 400 days.
+
+`GET /v1/admin/usage/summary` provides read-only JSON or CSV aggregation by UTC date range or an exact ISO 8601 `since`/`until` window, optionally filtered by source. It requires the separate `USAGE_READ_TOKEN` secret, returns `503` until that secret is configured, and never returns scripts, model output, IP addresses, or API keys. Model prices come from `LLM_PRICING_JSON`; missing or invalid prices produce a null cost with `pricing_missing=true`, never an invented estimate. Paid API calls are not yet included in this ledger.
+
 ## Paid flow
 
 `POST /v1/app/invoke` → hash API key → active plan + expiry check → script/options validation → atomic quota reservation → localized `buildPrompt()` → xAI Responses API → result schema validation → metrics + first real-call event + attribution + result ID.

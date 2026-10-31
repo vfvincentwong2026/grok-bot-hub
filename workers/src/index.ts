@@ -6,6 +6,7 @@ import { renderHome } from "./home";
 import { renderInstallPage, resolvePageLanguage } from "./install";
 import { handleLeaderboard, recordMetric } from "./leaderboard";
 import { renderLegalPage } from "./legal";
+import { handleUsageSummary } from "./llm-usage";
 import { handleMcp } from "./mcp";
 import { handlePaidInvoke } from "./paid";
 import { checkXPolicy } from "./policy";
@@ -22,6 +23,9 @@ interface Env {
   GROK_DEFAULT_MODEL: string;
   A2A_SHARED_SECRET: string;
   AI_GATEWAY_ID?: string;
+  LLM_PRICING_JSON?: string;
+  LLM_PRICING_VERSION?: string;
+  USAGE_READ_TOKEN?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_PRICE_CREATOR_IDR?: string;
   STRIPE_PRICE_STUDIO_IDR?: string;
@@ -65,6 +69,10 @@ export default {
     if (request.method === "GET" && url.pathname === "/.well-known/agent-card.json") {
       const language = url.searchParams.get("lang") ?? request.headers.get("Accept-Language");
       return json({ agents: getAgentCards(language) });
+    }
+
+    if (url.pathname === "/v1/admin/usage/summary") {
+      return handleUsageSummary(request, env);
     }
 
     if (url.pathname === "/mcp") {

@@ -1,12 +1,12 @@
-import { AnalysisOptionsError, resolveAnalysisOptions } from "./analysis-options";
+import { AnalysisOptionsError, INDONESIAN_EXAMPLE, resolveAnalysisOptions } from "./analysis-options";
 import { extractOutputText, parseHookAnalysis } from "./analysis-result";
 import { AI_ATTRIBUTION } from "./attribution";
 import { hashScriptText, recordFirstPartyEvent } from "./events";
 import { recordMetric } from "./leaderboard";
+import { buildLlmUsageRecord, recordLlmUsage, type LlmUsageEnv, type LlmUsageSource } from "./llm-usage";
 import { getBot } from "./registry";
 
-interface DemoEnv {
-  LEADERBOARD_KV: KVNamespace;
+interface DemoEnv extends LlmUsageEnv {
   XAI_API_KEY: string;
   XAI_BASE_URL: string;
   GROK_DEFAULT_MODEL: string;
@@ -16,7 +16,7 @@ const DEMO_BOT_ID = "bot:drama-hook-analyzer";
 const HOURLY_IP_LIMIT = 3;
 const DAILY_GLOBAL_LIMIT = 20;
 
-export async function handleDemoInvoke(request: Request, env: DemoEnv): Promise<Response> {
+export async function handleDemoInvoke(request: Request, env: DemoEnv, source: LlmUsageSource = "web_demo"): Promise<Response> {
   const origin = request.headers.get("Origin");
   if (origin && new URL(origin).host !== new URL(request.url).host) {
     return json({ ok: false, error: "cross_origin_demo_forbidden" }, 403);
@@ -73,11 +73,26 @@ export async function handleDemoInvoke(request: Request, env: DemoEnv): Promise<
     const latency_ms = Date.now() - started;
     const tokens = typeof aiResp?.usage?.total_tokens === "number" ? aiResp.usage.total_tokens : undefined;
     const receiptId = crypto.randomUUID();
-    const analysis = parseHookAnalysis(extractOutputText(aiResp), receiptId);
+    const usageRecord = buildLlmUsageRecord(env, aiResp, {
+      source,
+      status: "ok",
+      latencyMs: latency_ms,
+      isExample: scriptText === INDONESIAN_EXAMPLE,
+      receiptId,
+      defaultModel: env.GROK_DEFAULT_MODEL,
+    });
+    let analysis;
+    try {
+      analysis = parseHookAnalysis(extractOutputText(aiResp), receiptId);
+    } catch (error) {
+      await Promise.allSettled([recordLlmUsage(env, { ...usageRecord, status: "parse_failed" })]);
+      throw error;
+    }
     const scriptHash = await hashScriptText(scriptText);
     await Promise.allSettled([
       recordMetric(env, bot.id, { latency_ms, tokens, ok: true }),
       recordFirstPartyEvent(env, "demo_done", { duration_ms: latency_ms, script_hash: scriptHash }),
+      recordLlmUsage(env, usageRecord),
     ]);
 
     return json({ ok: true, bot: bot.id, analysis, receipt_id: receiptId, attribution: AI_ATTRIBUTION, options, usage: { latency_ms } });

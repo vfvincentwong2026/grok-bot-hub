@@ -1,9 +1,9 @@
 import { INDONESIAN_EXAMPLE, INPUT_LANGUAGES, OUTPUT_LANGUAGES, PLATFORMS, TARGET_AUDIENCES } from "./analysis-options";
 import { handleDemoInvoke } from "./demo";
 import { hashScriptText, recordFirstRealCall } from "./events";
+import type { LlmUsageEnv } from "./llm-usage";
 
-interface McpEnv {
-  LEADERBOARD_KV: KVNamespace;
+interface McpEnv extends LlmUsageEnv {
   XAI_API_KEY: string;
   XAI_BASE_URL: string;
   GROK_DEFAULT_MODEL: string;
@@ -129,7 +129,7 @@ async function callTool(request: Request, env: McpEnv, id: JsonRpcId, params: an
     method: "POST",
     headers,
     body: JSON.stringify(params.arguments),
-  }), env);
+  }), env, "mcp");
   const data = await analysisResponse.json() as any;
 
   if (!analysisResponse.ok || !data?.ok) {

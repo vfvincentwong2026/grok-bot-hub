@@ -59,7 +59,7 @@ beforeEach(() => {
       rewritten_hooks: ["Hook satu", "Hook dua", "Hook tiga"],
       audience_fit: "Strong fit",
     }),
-    usage: { total_tokens: 123 },
+    usage: { input_tokens: 100, output_tokens: 23, total_tokens: 123 },
   }), { status: 200, headers: { "content-type": "application/json" } })));
 });
 
@@ -135,6 +135,66 @@ describe("MCP Streamable HTTP", () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
+  it("records one MCP usage entry without sensitive text", async () => {
+    const { env, store } = createEnv();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const response = await callAnalyzeHook(env);
+    const data = await response.json();
+    const usageEntries = [...store.entries()].filter(([key]) => key.startsWith("usage:llm:"));
+
+    expect(response.status).toBe(200);
+    expect(usageEntries).toHaveLength(1);
+    const record = JSON.parse(usageEntries[0]![1]);
+    expect(record).toEqual(expect.objectContaining({
+      source: "mcp",
+      tool: "analyze_hook",
+      status: "ok",
+      receipt_id: data.result.structuredContent.receipt_id,
+      input_tokens: 100,
+      output_tokens: 23,
+      total_tokens: 123,
+      is_example: false,
+    }));
+    const observableOutput = JSON.stringify([record, logSpy.mock.calls]);
+    expect(observableOutput).not.toContain(validScript);
+    expect(observableOutput).not.toContain("test-xai-key");
+    logSpy.mockRestore();
+  });
+
+  it("records parse failures while preserving the existing MCP error", async () => {
+    const { env, store } = createEnv();
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      output_text: "not valid analysis JSON",
+      usage: { input_tokens: 100, output_tokens: 23, total_tokens: 123 },
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const response = await callAnalyzeHook(env);
+    const data = await response.json();
+    const records = [...store.entries()]
+      .filter(([key]) => key.startsWith("usage:llm:"))
+      .map(([, value]) => JSON.parse(value));
+
+    expect(data.result.isError).toBe(true);
+    expect(data.result.structuredContent.error).toBe("demo_ai_unavailable");
+    expect(records).toHaveLength(1);
+    expect(records[0].status).toBe("parse_failed");
+    expect([...store.entries()].filter(([key]) => key.startsWith("demo:")).map(([, value]) => value)).toEqual(["0", "0"]);
+  });
+
+  it("returns analysis when only the usage ledger write fails", async () => {
+    const { env, store } = createEnv();
+    env.LEADERBOARD_KV.put.mockImplementation(async (key: string, value: string) => {
+      if (key.startsWith("usage:llm:")) throw new Error("usage KV unavailable");
+      store.set(key, value);
+    });
+
+    const response = await callAnalyzeHook(env);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.result.isError).toBe(false);
+    expect(data.result.structuredContent.hook_score).toBe(88);
+  });
+
   it("records first MCP activation once per IP without storing script text", async () => {
     const { env, store } = createEnv();
     await callAnalyzeHook(env);
@@ -153,9 +213,14 @@ describe("MCP Streamable HTTP", () => {
     const { env, store } = createEnv();
     const response = await callAnalyzeHook(env, INDONESIAN_EXAMPLE);
     const events = [...store.values()].filter((value) => value.includes('"event"')).map((value) => JSON.parse(value));
+    const usageRecords = [...store.entries()]
+      .filter(([key]) => key.startsWith("usage:llm:"))
+      .map(([, value]) => JSON.parse(value));
 
     expect(response.status).toBe(200);
     expect(events.some((event) => event.event === "first_real_call")).toBe(false);
+    expect(usageRecords).toHaveLength(1);
+    expect(usageRecords[0].is_example).toBe(true);
   });
 
   it("shares the three-per-hour demo quota and returns an upgrade path", async () => {
