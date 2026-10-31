@@ -5,8 +5,12 @@ export const SALES_CONTACT = {
 
 const idNumber = new Intl.NumberFormat("id-ID");
 
+export function formatIdrId(value: number): string {
+  return `Rp${idNumber.format(value)}`;
+}
+
 export function activationMessage(planName: string, priceIdr: number): string {
-  return `Halo, saya ingin aktivasi paket ${planName} (Rp${idNumber.format(priceIdr)} / 30 hari) GrokBotHub`;
+  return `Halo, saya ingin aktivasi paket ${planName} (${formatIdrId(priceIdr)} / 30 hari) GrokBotHub`;
 }
 
 export function whatsappHref(planName: string, priceIdr: number): string {

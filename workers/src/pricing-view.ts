@@ -1,5 +1,5 @@
 import { formatIdr, PLANS, type Plan } from "./plans";
-import { mailtoHref, whatsappHref } from "./sales-contact";
+import { formatIdrId, mailtoHref, whatsappHref } from "./sales-contact";
 import type { Language } from "./types";
 
 export const pricingStyles = `
@@ -49,14 +49,14 @@ const ID_PLAN_COPY: Record<Plan["id"], PlanText> = {
     features: ["Analisis hook lewat browser dan MCP", "3 panggilan per IP per jam, dibagi antara web dan MCP", "20 panggilan global per hari", "Tanpa API key"],
   },
   creator: {
-    name: "Kreator",
+    name: "Creator",
     description: "Untuk penulis independen dan tim konten kecil.",
     features: ["1.000 analisis selama 30 hari", "API key produksi", "Output JSON terstruktur"],
   },
   studio: {
     name: "Studio",
     description: "Untuk tim yang meninjau naskah dalam volume besar.",
-    features: ["5.000 analisis selama 30 hari", "Semua fitur Kreator", "Dukungan integrasi"],
+    features: ["5.000 analisis selama 30 hari", "Semua fitur Creator", "Dukungan integrasi"],
   },
 };
 
@@ -135,23 +135,29 @@ function escapeAttr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function contactLinks(plan: Plan, copy: PricingCopy, primary: boolean): string {
+  const whatsappClass = primary ? `button ${plan.id === "studio" ? "primary" : "secondary"}` : "contact-alt";
+  return `<a class="${whatsappClass}" href="${escapeAttr(whatsappHref(plan.name, plan.priceIdr))}" target="_blank" rel="noopener noreferrer" data-contact-channel="whatsapp">${copy.contactWhatsapp}</a>
+    <a class="contact-alt" href="${escapeAttr(mailtoHref(plan.name, plan.priceIdr))}" data-contact-channel="email">${copy.contactEmail}</a>`;
+}
+
 export function renderPricingSection(checkoutEnabled: boolean, language: Language = "en"): string {
   const copy = PRICING_COPY[language];
   const cards = PLANS.map((plan) => {
     const planCopy = language === "id" ? ID_PLAN_COPY[plan.id] : plan;
     const features = planCopy.features.map((feature) => `<li>${feature}</li>`).join("");
+    const priceText = language === "id" ? formatIdrId(plan.priceIdr) : formatIdr(plan.priceIdr);
     const action = plan.id === "free"
       ? `<a class="button secondary" href="#demo">${copy.tryFree}</a>`
       : checkoutEnabled
-        ? `<button class="button ${plan.id === "studio" ? "primary" : "secondary"} checkout-button" data-plan="${plan.id}" type="button">${copy.buyPass(planCopy.name)}</button>`
-        : `<a class="button ${plan.id === "studio" ? "primary" : "secondary"}" href="${escapeAttr(whatsappHref(plan.name, plan.priceIdr))}" target="_blank" rel="noopener noreferrer" data-contact-channel="whatsapp">${copy.contactWhatsapp}</a>
-          <a class="contact-alt" href="${escapeAttr(mailtoHref(plan.name, plan.priceIdr))}" data-contact-channel="email">${copy.contactEmail}</a>`;
+        ? `<button class="button ${plan.id === "studio" ? "primary" : "secondary"} checkout-button" data-plan="${plan.id}" type="button">${copy.buyPass(planCopy.name)}</button>${contactLinks(plan, copy, false)}`
+        : contactLinks(plan, copy, true);
     return `
       <article class="price-card ${plan.id === "studio" ? "recommended" : ""}">
         ${plan.id === "studio" ? `<span class="recommended-label">${copy.recommended}</span>` : ""}
         <h3>${planCopy.name}</h3>
         <p class="price-description">${planCopy.description}</p>
-        <div class="price"><span class="price-value">${formatIdr(plan.priceIdr)}</span><span class="price-period">${plan.id === "free" ? copy.freePeriod : copy.paidPeriod}</span></div>
+        <div class="price"><span class="price-value">${priceText}</span><span class="price-period">${plan.id === "free" ? copy.freePeriod : copy.paidPeriod}</span></div>
         <ul class="plan-features">${features}</ul>
         ${action}
       </article>`;
