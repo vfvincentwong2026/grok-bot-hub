@@ -24,7 +24,12 @@ new_sqlite_classes = ["UsageCounter"]
 [vars]
 GROK_DEFAULT_MODEL = "grok-4.7"
 XAI_BASE_URL = "https://api.x.ai/v1"
+# 单价为美元 / 每百万 token；Vincent 确认前保持 null，成本记为 pricing_missing。
+LLM_PRICING_VERSION = "2026-10-31-placeholder"
+LLM_PRICING_JSON = '{"grok-4.7":{"input_usd_per_mtok":null,"cached_input_usd_per_mtok":null,"output_usd_per_mtok":null}}'
 
 # 生产环境通过 `wrangler secret put` 设置：
 #   wrangler secret put XAI_API_KEY
 #   wrangler secret put A2A_SHARED_SECRET
+#   wrangler secret put USAGE_READ_TOKEN
+#   wrangler secret put INTERNAL_PATROL_TOKEN

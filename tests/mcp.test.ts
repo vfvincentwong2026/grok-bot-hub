@@ -17,6 +17,7 @@ function createEnv() {
     XAI_API_KEY: "test-xai-key",
     XAI_BASE_URL: "https://api.x.ai/v1",
     GROK_DEFAULT_MODEL: "grok-test",
+    INTERNAL_PATROL_TOKEN: undefined as string | undefined,
   };
   return { env, store };
 }
@@ -38,13 +39,17 @@ function mcp(
   }), env as any);
 }
 
-function callAnalyzeHook(env: ReturnType<typeof createEnv>["env"], scriptText = validScript) {
+function callAnalyzeHook(
+  env: ReturnType<typeof createEnv>["env"],
+  scriptText = validScript,
+  headers: Record<string, string> = {},
+) {
   return mcp(env, {
     jsonrpc: "2.0",
     id: 3,
     method: "tools/call",
     params: { name: "analyze_hook", arguments: { script_text: scriptText, platform: "tiktok" } },
-  }, { "MCP-Protocol-Version": "2025-06-18" });
+  }, { "MCP-Protocol-Version": "2025-06-18", ...headers });
 }
 
 const validScript = "The maid reveals she is the true heir at the billionaire's wedding.";
@@ -59,7 +64,7 @@ beforeEach(() => {
       rewritten_hooks: ["Hook satu", "Hook dua", "Hook tiga"],
       audience_fit: "Strong fit",
     }),
-    usage: { total_tokens: 123 },
+    usage: { input_tokens: 100, output_tokens: 23, total_tokens: 123 },
   }), { status: 200, headers: { "content-type": "application/json" } })));
 });
 
@@ -135,6 +140,97 @@ describe("MCP Streamable HTTP", () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
+  it("records one MCP usage entry without sensitive text", async () => {
+    const { env, store } = createEnv();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const response = await callAnalyzeHook(env);
+    const data = await response.json();
+    const usageEntries = [...store.entries()].filter(([key]) => key.startsWith("usage:llm:"));
+
+    expect(response.status).toBe(200);
+    expect(usageEntries).toHaveLength(1);
+    const record = JSON.parse(usageEntries[0]![1]);
+    expect(record).toEqual(expect.objectContaining({
+      source: "mcp",
+      tool: "analyze_hook",
+      status: "ok",
+      receipt_id: data.result.structuredContent.receipt_id,
+      input_tokens: 100,
+      output_tokens: 23,
+      total_tokens: 123,
+      is_example: false,
+    }));
+    const observableOutput = JSON.stringify([record, logSpy.mock.calls]);
+    expect(observableOutput).not.toContain(validScript);
+    expect(observableOutput).not.toContain("test-xai-key");
+    logSpy.mockRestore();
+  });
+
+  it("marks only authenticated internal patrols without logging the token", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const correct = createEnv();
+    correct.env.INTERNAL_PATROL_TOKEN = "test-patrol-token";
+    const response = await callAnalyzeHook(correct.env, validScript, { "X-GBH-Internal-Patrol": "test-patrol-token" });
+    const responseData = await response.json();
+
+    const wrong = createEnv();
+    wrong.env.INTERNAL_PATROL_TOKEN = "test-patrol-token";
+    await callAnalyzeHook(wrong.env, validScript, { "X-GBH-Internal-Patrol": "wrong-patrol-token" });
+    const unconfigured = createEnv();
+    await callAnalyzeHook(unconfigured.env, validScript, { "X-GBH-Internal-Patrol": "test-patrol-token" });
+
+    const source = (store: Map<string, string>) => {
+      const entry = [...store.entries()].find(([key]) => key.startsWith("usage:llm:"));
+      return JSON.parse(entry![1]).source;
+    };
+    expect(source(correct.store)).toBe("internal_patrol");
+    expect(source(wrong.store)).toBe("mcp");
+    expect(source(unconfigured.store)).toBe("mcp");
+    const observable = JSON.stringify([
+      ...correct.store.values(),
+      ...wrong.store.values(),
+      ...unconfigured.store.values(),
+      logSpy.mock.calls,
+      responseData,
+    ]);
+    expect(observable).not.toContain("test-patrol-token");
+    logSpy.mockRestore();
+  });
+
+  it("records parse failures while preserving the existing MCP error", async () => {
+    const { env, store } = createEnv();
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      output_text: "not valid analysis JSON",
+      usage: { input_tokens: 100, output_tokens: 23, total_tokens: 123 },
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const response = await callAnalyzeHook(env);
+    const data = await response.json();
+    const records = [...store.entries()]
+      .filter(([key]) => key.startsWith("usage:llm:"))
+      .map(([, value]) => JSON.parse(value));
+
+    expect(data.result.isError).toBe(true);
+    expect(data.result.structuredContent.error).toBe("demo_ai_unavailable");
+    expect(records).toHaveLength(1);
+    expect(records[0].status).toBe("parse_failed");
+    expect([...store.entries()].filter(([key]) => key.startsWith("demo:")).map(([, value]) => value)).toEqual(["0", "0"]);
+  });
+
+  it("returns analysis when only the usage ledger write fails", async () => {
+    const { env, store } = createEnv();
+    env.LEADERBOARD_KV.put.mockImplementation(async (key: string, value: string) => {
+      if (key.startsWith("usage:llm:")) throw new Error("usage KV unavailable");
+      store.set(key, value);
+    });
+
+    const response = await callAnalyzeHook(env);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.result.isError).toBe(false);
+    expect(data.result.structuredContent.hook_score).toBe(88);
+  });
+
   it("records first MCP activation once per IP without storing script text", async () => {
     const { env, store } = createEnv();
     await callAnalyzeHook(env);
@@ -153,9 +249,14 @@ describe("MCP Streamable HTTP", () => {
     const { env, store } = createEnv();
     const response = await callAnalyzeHook(env, INDONESIAN_EXAMPLE);
     const events = [...store.values()].filter((value) => value.includes('"event"')).map((value) => JSON.parse(value));
+    const usageRecords = [...store.entries()]
+      .filter(([key]) => key.startsWith("usage:llm:"))
+      .map(([, value]) => JSON.parse(value));
 
     expect(response.status).toBe(200);
     expect(events.some((event) => event.event === "first_real_call")).toBe(false);
+    expect(usageRecords).toHaveLength(1);
+    expect(usageRecords[0].is_example).toBe(true);
   });
 
   it("shares the three-per-hour demo quota and returns an upgrade path", async () => {

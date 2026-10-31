@@ -17,6 +17,7 @@ function createEnv() {
     XAI_BASE_URL: "https://api.x.ai/v1",
     GROK_DEFAULT_MODEL: "grok-test",
     A2A_SHARED_SECRET: "test-secret",
+    INTERNAL_PATROL_TOKEN: undefined as string | undefined,
   };
 
   return { env, store };
@@ -26,6 +27,7 @@ function invokeDemo(
   env: ReturnType<typeof createEnv>["env"],
   scriptText: string,
   payload: Record<string, unknown> = {},
+  headers: Record<string, string> = {},
 ) {
   return worker.fetch(
     new Request("http://localhost/v1/demo/invoke", {
@@ -34,6 +36,7 @@ function invokeDemo(
         "content-type": "application/json",
         Origin: "http://localhost",
         "CF-Connecting-IP": "203.0.113.10",
+        ...headers,
       },
       body: JSON.stringify({ script_text: scriptText, ...payload }),
     }),
@@ -159,6 +162,16 @@ describe("POST /v1/demo/invoke", () => {
     const demoCounters = [...store.entries()].filter(([key]) => key.startsWith("demo:"));
     expect(demoCounters).toHaveLength(2);
     expect(demoCounters.map(([, value]) => value)).toEqual(["0", "0"]);
+  });
+
+  it("marks authenticated web demo patrols as internal usage", async () => {
+    const { env, store } = createEnv();
+    env.INTERNAL_PATROL_TOKEN = "test-patrol-token";
+    const response = await invokeDemo(env, validScript, {}, { "X-GBH-Internal-Patrol": "test-patrol-token" });
+    const usageEntry = [...store.entries()].find(([key]) => key.startsWith("usage:llm:"));
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(usageEntry![1]).source).toBe("internal_patrol");
   });
 
   it("records demo duration with only a script hash", async () => {

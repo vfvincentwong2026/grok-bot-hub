@@ -1,9 +1,9 @@
 import { INDONESIAN_EXAMPLE, INPUT_LANGUAGES, OUTPUT_LANGUAGES, PLATFORMS, TARGET_AUDIENCES } from "./analysis-options";
 import { handleDemoInvoke } from "./demo";
 import { hashScriptText, recordFirstRealCall } from "./events";
+import type { LlmUsageEnv } from "./llm-usage";
 
-interface McpEnv {
-  LEADERBOARD_KV: KVNamespace;
+interface McpEnv extends LlmUsageEnv {
   XAI_API_KEY: string;
   XAI_BASE_URL: string;
   GROK_DEFAULT_MODEL: string;
@@ -124,12 +124,14 @@ async function callTool(request: Request, env: McpEnv, id: JsonRpcId, params: an
   const headers = new Headers({ "content-type": "application/json" });
   const ip = request.headers.get("CF-Connecting-IP");
   if (ip) headers.set("CF-Connecting-IP", ip);
+  const patrol = request.headers.get("X-GBH-Internal-Patrol");
+  if (patrol) headers.set("X-GBH-Internal-Patrol", patrol);
 
   const analysisResponse = await handleDemoInvoke(new Request(new URL("/v1/demo/invoke", request.url), {
     method: "POST",
     headers,
     body: JSON.stringify(params.arguments),
-  }), env);
+  }), env, "mcp");
   const data = await analysisResponse.json() as any;
 
   if (!analysisResponse.ok || !data?.ok) {
