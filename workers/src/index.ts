@@ -6,6 +6,7 @@ import { renderHome } from "./home";
 import { renderInstallPage, resolvePageLanguage } from "./install";
 import { handleLeaderboard, recordMetric } from "./leaderboard";
 import { renderLegalPage } from "./legal";
+import { handleMcp } from "./mcp";
 import { handlePaidInvoke } from "./paid";
 import { checkXPolicy } from "./policy";
 import { getAgentCards, getBot, listBots } from "./registry";
@@ -64,6 +65,10 @@ export default {
     if (request.method === "GET" && url.pathname === "/.well-known/agent-card.json") {
       const language = url.searchParams.get("lang") ?? request.headers.get("Accept-Language");
       return json({ agents: getAgentCards(language) });
+    }
+
+    if (url.pathname === "/mcp") {
+      return handleMcp(request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/demo/invoke") {

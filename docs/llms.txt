@@ -4,7 +4,8 @@
 
 ## Implemented endpoints
 
-- GET /install?lang=en|id|zh — honest integration paths; unavailable plugin/MCP options say coming soon
+- GET /install?lang=en|id|zh — working MCP/API configuration; unavailable Grok Bot plugin says coming soon
+- POST /mcp — MCP Streamable HTTP with initialize, ping, tools/list, and free analyze_hook calls
 - POST /v1/events — same-origin browser analytics allowlist; no raw script or client-side paid events
 - POST /v1/demo/invoke — rate-limited public analysis with language/audience/platform options
 - POST /v1/app/invoke — paid analysis with 30-day key expiry and per-key quota
@@ -28,4 +29,5 @@
 - receipt_id is currently a response identifier, not a signed receipt.
 - First-party analytics expire after 90 days and never include script text; no third-party trackers.
 - No fabricated rankings, customers, orders, or revenue; empty states are shown when data is absent.
-- MCP, Grok Bot plugin packages, signed receipts, and verified-result rankings are not implemented yet.
+- Free MCP analyze_hook calls share demo limits: 3 calls per IP each hour and 20 global calls per day; no API key required.
+- Grok Bot plugin packages, signed receipts, and verified-result rankings are not implemented yet.

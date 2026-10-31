@@ -64,7 +64,7 @@ describe("GET /", () => {
 });
 
 describe("GET /install", () => {
-  it("offers three honest integration paths without fake MCP or plugin links", async () => {
+  it("offers working MCP and API paths while keeping the plugin status honest", async () => {
     const response = await worker.fetch(new Request("http://localhost/install?lang=zh"), {} as any);
     const html = await response.text();
 
@@ -74,8 +74,12 @@ describe("GET /install", () => {
     expect(html).toContain("我只要 API");
     expect(html).toContain("即将上线");
     expect(html).toContain("现已可用");
-    expect(html).toContain("curl -X POST http://localhost/v1/app/invoke");
+    expect(html).toContain('"url": "<span data-request-origin>http://localhost</span>/mcp"');
+    expect(html).toContain("每 IP 每小时 3 次");
+    expect(html).toContain('data-install-method="mcp"');
+    expect(html).toContain('curl -X POST <span data-request-origin>http://localhost</span>/v1/app/invoke');
     expect(html).toContain('data-install-method="api"');
+    expect(html).toContain("element.textContent = window.location.origin");
     expect(html).not.toContain("mcp://");
   });
 });

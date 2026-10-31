@@ -12,15 +12,17 @@ A Cloudflare Workers service that provides short-drama hook analysis with Grok, 
 - Input language auto-detection for Indonesian, English, and Chinese; Indonesian defaults to `ID_GenZ` + TikTok.
 - Selectable audience, platform, and output language (`id` / `en` / `zh`).
 - First-party analytics in KV with a 90-day TTL: no third-party trackers and no script text in event records.
-- An honest `/install` page: the paid API is available; Grok Bot plugins and MCP are marked as coming soon.
+- Standard MCP Streamable HTTP at `/mcp` with `initialize`, `ping`, `tools/list`, and the `analyze_hook` tool.
+- Free MCP access without registration or an API key, sharing the web demo limits: 3 calls per IP each hour and 20 calls globally per day.
+- An honest `/install` page with MCP configuration and API examples; Grok Bot plugins remain marked as coming soon.
 - Localized bot and Agent Card discovery in English, Indonesian, and Chinese.
-- Public demo limits with best-effort reservation release when AI fails or returns an invalid result.
+- Shared public demo and free MCP limits with best-effort reservation release when AI fails or returns an invalid result.
 - Paid API keys stored as SHA-256 hashes, 30-day expiration, per-key quotas, and failed-call quota refunds.
 - One-time IDR Checkout passes: Creator Rp449,000 / 1,000 analyses and Studio Rp1,499,000 / 5,000 analyses. No automatic renewal.
 - Honest empty states when no leaderboard snapshot or verified outcome data exists.
 - Terms, privacy, and refund pages.
 
-The legacy custom `A2A-v1` invocation route remains available for compatibility and returns `Deprecation: true`. It is not represented as the official A2A protocol. MCP, Grok Bot plugin packages, signed outcome receipts, and verified-result rankings are not implemented yet.
+The legacy custom `A2A-v1` invocation route remains available for compatibility and returns `Deprecation: true`. It is not represented as the official A2A protocol. Grok Bot plugin packages, signed outcome receipts, and verified-result rankings are not implemented yet. See the [free MCP guide](./docs/mcp.md) for configuration and limits.
 
 ## Live service
 
@@ -81,6 +83,19 @@ With `input_language` omitted or set to `auto`, Indonesian input defaults to `ID
 - `output_language`: `id`, `en`, `zh`
 - `platform`: `tiktok`, `reels`, `youtube_shorts`, `dramabox`, `shortmax`, `reelshort`
 
+### Free MCP
+
+Configure a remote MCP client with `http://localhost:8787/mcp`, or call it directly:
+
+```bash
+curl -X POST http://localhost:8787/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+The `analyze_hook` tool accepts the same script and localization options as the public demo. No registration or API key is required. Free calls share the demo quota, and non-example calls record first activation once per hashed IP. See [docs/mcp.md](./docs/mcp.md) for initialization, tool-call examples, errors, and privacy details.
+
 ### Paid analysis
 
 ```bash
@@ -102,7 +117,8 @@ Successful AI responses include `dimensions`, three `rewritten_hooks`, `receipt_
 | Method | Endpoint | Current behavior |
 | --- | --- | --- |
 | `GET` | `/health` | Service health |
-| `GET` | `/install` | Honest Grok Bot, MCP, and API integration paths |
+| `GET` | `/install` | Working MCP/API configuration and honest Grok Bot plugin status |
+| `POST` | `/mcp` | MCP Streamable HTTP and free `analyze_hook` calls |
 | `GET` | `/v1/bots?lang=id` | Localized public bot list |
 | `GET` | `/.well-known/agent-card.json?lang=zh` | Localized discovery cards |
 | `GET` | `/v1/leaderboard` | Existing snapshot or an honest empty array |

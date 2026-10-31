@@ -18,7 +18,7 @@ export const PLANS: Plan[] = [
     priceIdr: 0,
     durationDays: 0,
     analysisLimit: null,
-    features: ["Browser-based hook analysis", "3 calls per IP each hour", "No API key required"],
+    features: ["Browser and MCP hook analysis", "3 calls per IP each hour, shared across web and MCP", "20 global calls per day", "No API key required"],
   },
   {
     id: "creator",
