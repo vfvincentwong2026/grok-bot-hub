@@ -45,6 +45,61 @@ describe("GET /", () => {
     expect(chinese).toContain("试一段印尼语开头 →");
   });
 
+  it("offers WhatsApp and email contact links without pretending checkout is available", async () => {
+    const response = await worker.fetch(new Request("http://localhost/pricing?lang=id"), {} as any);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain('href="https://wa.me/6282321122968?text=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Creator%20(Rp449.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain('href="https://wa.me/6282321122968?text=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Studio%20(Rp1.499.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain('target="_blank" rel="noopener noreferrer" data-contact-channel="whatsapp"');
+    expect(html).toContain('href="mailto:vfvincentwong@gmail.com?subject=Aktivasi%20paket%20Creator%20GrokBotHub&amp;body=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Creator%20(Rp449.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain("Aktivasi via WhatsApp");
+    expect(html).toContain("atau kirim email");
+    expect(html).not.toContain("issues/new");
+    expect(html).not.toContain("github.com/vfvincentwong2026/grok-bot-hub/issues");
+    expect(html).not.toContain('data-plan="creator"');
+    expect(html).not.toContain(">Request Creator<");
+
+    const english = await (await worker.fetch(new Request("http://localhost/pricing?lang=en"), {} as any)).text();
+    const chinese = await (await worker.fetch(new Request("http://localhost/pricing?lang=zh"), {} as any)).text();
+    expect(english).toContain("Activate via WhatsApp");
+    expect(english).toContain("or email us");
+    expect(english).toContain('<span class="price-value">Rp449,000</span>');
+    expect(english).toContain('<span class="price-value">Rp1,499,000</span>');
+    expect(chinese).toContain("WhatsApp 联系开通");
+    expect(chinese).toContain("或发送邮件");
+  });
+
+  it("localizes the complete pricing section into Indonesian without changing prices", async () => {
+    const response = await worker.fetch(new Request("http://localhost/pricing?lang=id"), {} as any);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain("02 / Harga");
+    expect(html).toContain("Dari hook pertama hingga satu slate penuh");
+    expect(html).toContain("Gratis");
+    expect(html).toContain("<h3>Creator</h3>");
+    expect(html).not.toContain("Kreator");
+    expect(html).toContain("Semua fitur Creator");
+    expect(html).toContain("Direkomendasikan");
+    expect(html).toContain("1.000 analisis selama 30 hari");
+    expect(html).toContain("5.000 analisis selama 30 hari");
+    expect(html).toContain("/ 30 hari");
+    expect(html).toContain("Harga dalam IDR");
+    expect(html).toContain("Apakah saya akan ditagih otomatis?");
+    expect(html).toContain('<span class="price-value">Rp449.000</span>');
+    expect(html).not.toContain("Rp449,000");
+    expect(html).toContain("Rp1.499.000%20%2F%2030%20hari");
+    expect(html).toContain('<span class="price-value">Rp1.499.000</span>');
+    expect(html).not.toContain("Rp1,499,000");
+    expect(html).not.toContain("From first hook to full slate");
+    expect(html).not.toContain("browser access");
+    expect(html).not.toContain("/ 30 days");
+    expect(html).not.toContain("Prices in IDR");
+    expect(html).not.toContain(">Request ");
+  });
+
   it("enables real checkout buttons only when Stripe is configured", async () => {
     const env = {
       STRIPE_SECRET_KEY: "sk_test_123",
@@ -60,6 +115,31 @@ describe("GET /", () => {
     expect(html).toContain("Buy Creator 30-day pass");
     expect(html).toContain("Buy Studio 30-day pass");
     expect(html).toContain('window.gbhTrack("upgrade_view")');
+    expect(html).toContain('href="https://wa.me/6282321122968?text=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Creator%20(Rp449.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain('href="https://wa.me/6282321122968?text=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Studio%20(Rp1.499.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain("mailto:vfvincentwong@gmail.com?subject=Aktivasi%20paket%20Creator%20GrokBotHub");
+  });
+
+  it("keeps WhatsApp and email contact links when Stripe checkout is enabled", async () => {
+    const env = {
+      STRIPE_SECRET_KEY: "sk_test_123",
+      STRIPE_PRICE_CREATOR_IDR: "price_creator_idr",
+      STRIPE_PRICE_STUDIO_IDR: "price_studio_idr",
+    };
+    const response = await worker.fetch(new Request("http://localhost/pricing?lang=id"), env as any);
+    const html = await response.text();
+    const contactTags = html.match(/<a\b[^>]*data-contact-channel="(?:whatsapp|email)"[^>]*>/g) ?? [];
+
+    expect(response.status).toBe(200);
+    expect(html).toContain('data-plan="creator"');
+    expect(html).toContain('data-plan="studio"');
+    expect(html.match(/data-contact-channel="whatsapp"/g)).toHaveLength(2);
+    expect(html.match(/data-contact-channel="email"/g)).toHaveLength(2);
+    expect(contactTags).toHaveLength(4);
+    for (const tag of contactTags) {
+      expect(tag).not.toContain("checkout-button");
+      expect(tag).not.toContain("data-plan");
+    }
   });
 });
 

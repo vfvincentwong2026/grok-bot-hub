@@ -30,7 +30,7 @@ The legacy custom `A2A-v1` invocation route remains available for compatibility 
 - Pricing: https://grok-bot-hub.vfvincentwong-881.workers.dev/pricing
 - Health: https://grok-bot-hub.vfvincentwong-881.workers.dev/health
 
-Stripe is not configured in production yet. Until it is configured and tested, the pricing page shows request links rather than pretending that checkout is available.
+Stripe is not configured in production yet. The pricing page offers WhatsApp (primary) and email contact links for activating Creator and Studio passes; these links remain available after Stripe checkout is configured, and checkout buttons appear only when Stripe is configured.
 
 ## Quick start
 
