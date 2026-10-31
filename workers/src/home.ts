@@ -294,7 +294,7 @@ export function renderHome(options: HomeOptions = {}): Response {
         <a class="button secondary" href="/install?lang=${language}" data-install-link>${t.installButton}</a>
       </div>
     </section>
-    ${options.showPricing ? renderPricingSection(options.checkoutEnabled ?? false) : ""}
+    ${options.showPricing ? renderPricingSection(options.checkoutEnabled ?? false, language) : ""}
   </main>
   <footer class="shell footer">
     <div>GrokBotHub · AI-assisted hook analysis</div>

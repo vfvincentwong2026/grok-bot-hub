@@ -45,6 +45,55 @@ describe("GET /", () => {
     expect(chinese).toContain("试一段印尼语开头 →");
   });
 
+  it("offers WhatsApp and email contact links without pretending checkout is available", async () => {
+    const response = await worker.fetch(new Request("http://localhost/pricing?lang=id"), {} as any);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain('href="https://wa.me/6282321122968?text=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Creator%20(Rp449.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain('href="https://wa.me/6282321122968?text=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Studio%20(Rp1.499.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain('target="_blank" rel="noopener noreferrer" data-contact-channel="whatsapp"');
+    expect(html).toContain('href="mailto:vfvincentwong@gmail.com?subject=Aktivasi%20paket%20Creator%20GrokBotHub&amp;body=Halo%2C%20saya%20ingin%20aktivasi%20paket%20Creator%20(Rp449.000%20%2F%2030%20hari)%20GrokBotHub"');
+    expect(html).toContain("Aktivasi via WhatsApp");
+    expect(html).toContain("atau kirim email");
+    expect(html).not.toContain("issues/new");
+    expect(html).not.toContain("github.com/vfvincentwong2026/grok-bot-hub/issues");
+    expect(html).not.toContain('data-plan="creator"');
+    expect(html).not.toContain(">Request Creator<");
+
+    const english = await (await worker.fetch(new Request("http://localhost/pricing?lang=en"), {} as any)).text();
+    const chinese = await (await worker.fetch(new Request("http://localhost/pricing?lang=zh"), {} as any)).text();
+    expect(english).toContain("Activate via WhatsApp");
+    expect(english).toContain("or email us");
+    expect(chinese).toContain("WhatsApp 联系开通");
+    expect(chinese).toContain("或发送邮件");
+  });
+
+  it("localizes the complete pricing section into Indonesian without changing prices", async () => {
+    const response = await worker.fetch(new Request("http://localhost/pricing?lang=id"), {} as any);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain("02 / Harga");
+    expect(html).toContain("Dari hook pertama hingga satu slate penuh");
+    expect(html).toContain("Gratis");
+    expect(html).toContain("Kreator");
+    expect(html).toContain("Direkomendasikan");
+    expect(html).toContain("1.000 analisis selama 30 hari");
+    expect(html).toContain("5.000 analisis selama 30 hari");
+    expect(html).toContain("/ 30 hari");
+    expect(html).toContain("Harga dalam IDR");
+    expect(html).toContain("Apakah saya akan ditagih otomatis?");
+    expect(html).toContain("Rp449,000");
+    expect(html).toContain("Rp1.499.000%20%2F%2030%20hari");
+    expect(html).toContain("Rp1,499,000");
+    expect(html).not.toContain("From first hook to full slate");
+    expect(html).not.toContain("browser access");
+    expect(html).not.toContain("/ 30 days");
+    expect(html).not.toContain("Prices in IDR");
+    expect(html).not.toContain(">Request ");
+  });
+
   it("enables real checkout buttons only when Stripe is configured", async () => {
     const env = {
       STRIPE_SECRET_KEY: "sk_test_123",
