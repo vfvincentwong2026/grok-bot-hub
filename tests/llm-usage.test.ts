@@ -155,7 +155,7 @@ describe("GET /v1/admin/usage/summary", () => {
     expect(env.LEADERBOARD_KV.put).not.toHaveBeenCalled();
   });
 
-  it("aggregates records, costs, sources, and example calls from metadata", async () => {
+  it("aggregates only non-example records and reports excluded calls", async () => {
     const { env, metadata } = createEnv();
     const first = seed(env, record());
     const second = seed(env, record({
@@ -173,17 +173,22 @@ describe("GET /v1/admin/usage/summary", () => {
     const data = await response.json();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(data.status).toBe("ok");
     expect(data.totals).toEqual({
-      calls: 2,
-      ok: 2,
+      calls: 1,
+      ok: 1,
       parse_failed: 0,
-      real_calls: 1,
-      example_calls: 1,
-      input_tokens: 400,
-      output_tokens: 200,
+      upstream_error: 0,
+      input_tokens: 200,
+      output_tokens: 100,
       estimated_cost_usd: "0.001000",
-      calls_without_pricing: 1,
+      priced_subtotal_usd: "0.001000",
+      cost_status: "complete",
+      priced_calls: 1,
+      unpriced_calls: 0,
     });
+    expect(data.by_source).toEqual({ mcp: 1, web_demo: 0 });
+    expect(data.excluded).toEqual({ example_calls: 1, internal_patrol_calls: 0 });
     expect(data.pricing_version).toEqual(["test-v1", "unconfigured"]);
     expect(data.by_day).toHaveLength(1);
     expect(data.by_model).toHaveLength(1);
@@ -191,30 +196,156 @@ describe("GET /v1/admin/usage/summary", () => {
 
     const mcpOnly = await (await usageRequest(env, "?from=2026-10-31&to=2026-10-31&source=mcp")).json();
     expect(mcpOnly.totals.calls).toBe(1);
-    expect(mcpOnly.totals.real_calls).toBe(1);
-    expect(mcpOnly.totals.example_calls).toBe(0);
+    expect(mcpOnly.excluded.example_calls).toBe(0);
   });
 
-  it("filters exact UTC+8 time windows and exports privacy-safe CSV", async () => {
+  it("returns null costs when every included call is unpriced", async () => {
     const { env, metadata } = createEnv();
-    const included = seed(env, record({ occurred_at: "2026-10-31T11:30:00.000Z" }));
+    for (const value of [
+      record({ estimated_cost_micro_usd: null, pricing_missing: true }),
+      record({ source: "web_demo", estimated_cost_micro_usd: null, pricing_missing: true }),
+    ]) {
+      const item = seed(env, value);
+      metadata.set(item.key, item.metadata);
+    }
+
+    const response = await usageRequest(env, "?from=2026-10-31&to=2026-10-31");
+    const data = await response.json();
+    expect(data.totals.calls).toBe(2);
+    expect(data.totals.estimated_cost_usd).toBeNull();
+    expect(data.totals.priced_subtotal_usd).toBeNull();
+    expect(data.totals.cost_status).toBe("no_data");
+    expect(data.totals.unpriced_calls).toBe(2);
+    expect(data.by_day[0]).toEqual(expect.objectContaining({ estimated_cost_usd: null, cost_status: "no_data", unpriced_calls: 2 }));
+    expect(data.by_model[0]).toEqual(expect.objectContaining({ estimated_cost_usd: null, cost_status: "no_data", unpriced_calls: 2 }));
+    expect(JSON.stringify(data)).not.toContain("0.000000");
+  });
+
+  it("separates priced subtotals from partial cost coverage", async () => {
+    const { env, metadata } = createEnv();
+    for (const value of [record(), record({ source: "web_demo", estimated_cost_micro_usd: null })]) {
+      const item = seed(env, value);
+      metadata.set(item.key, item.metadata);
+    }
+
+    const data = await (await usageRequest(env, "?from=2026-10-31&to=2026-10-31")).json();
+    expect(data.totals.estimated_cost_usd).toBeNull();
+    expect(data.totals.cost_status).toBe("partial");
+    expect(data.totals.priced_subtotal_usd).toBe("0.001000");
+    expect(data.totals.unpriced_calls).toBe(1);
+  });
+
+  it("returns an estimated cost only when all included calls are priced", async () => {
+    const { env, metadata } = createEnv();
+    for (const value of [record(), record({ source: "web_demo", estimated_cost_micro_usd: 2000 })]) {
+      const item = seed(env, value);
+      metadata.set(item.key, item.metadata);
+    }
+
+    const data = await (await usageRequest(env, "?from=2026-10-31&to=2026-10-31")).json();
+    expect(data.totals.cost_status).toBe("complete");
+    expect(data.totals.estimated_cost_usd).toBe("0.003000");
+    expect(data.totals.priced_subtotal_usd).toBe("0.003000");
+  });
+
+  it("excludes is_example calls from totals and costs", async () => {
+    const { env, metadata } = createEnv();
+    for (const value of [record(), record({ is_example: true, estimated_cost_micro_usd: 9000 })]) {
+      const item = seed(env, value);
+      metadata.set(item.key, item.metadata);
+    }
+
+    const data = await (await usageRequest(env, "?from=2026-10-31&to=2026-10-31")).json();
+    expect(data.totals.calls).toBe(1);
+    expect(data.totals.estimated_cost_usd).toBe("0.001000");
+    expect(data.excluded.example_calls).toBe(1);
+    expect(data.by_day[0].calls).toBe(1);
+    expect(data.by_model[0].calls).toBe(1);
+  });
+
+  it("excludes internal patrols by default but can query them explicitly", async () => {
+    const { env, metadata } = createEnv();
+    for (const value of [record(), record({ source: "internal_patrol" })]) {
+      const item = seed(env, value);
+      metadata.set(item.key, item.metadata);
+    }
+
+    const all = await (await usageRequest(env, "?from=2026-10-31&to=2026-10-31")).json();
+    expect(all.totals.calls).toBe(1);
+    expect(all.excluded.internal_patrol_calls).toBe(1);
+    expect(all.by_source).not.toHaveProperty("internal_patrol");
+
+    const patrol = await (await usageRequest(env, "?from=2026-10-31&to=2026-10-31&source=internal_patrol")).json();
+    expect(patrol.totals.calls).toBe(1);
+    expect(patrol.by_source.internal_patrol).toBe(1);
+  });
+
+  it("returns no_data and null totals for an empty window", async () => {
+    const { env } = createEnv();
+    const response = await usageRequest(env, "?from=2026-10-31&to=2026-10-31");
+    const data = await response.json();
+    expect(data.status).toBe("no_data");
+    expect(data.no_data_reason).toBe("no_records_in_window");
+    expect(data.totals.calls).toBeNull();
+    expect(data.totals.estimated_cost_usd).toBeNull();
+    expect(data.by_day).toEqual([]);
+    expect(data.by_model).toEqual([]);
+    expect(JSON.stringify(data)).not.toContain("0.000000");
+    expect(env.LEADERBOARD_KV.put).not.toHaveBeenCalled();
+  });
+
+  it("returns paid_api_not_instrumented even if paid records exist", async () => {
+    const { env, metadata } = createEnv();
+    const item = seed(env, record({ source: "paid_api" }));
+    metadata.set(item.key, item.metadata);
+
+    const response = await usageRequest(env, "?from=2026-10-31&to=2026-10-31&source=paid_api");
+    const data = await response.json();
+    expect(data.status).toBe("no_data");
+    expect(data.no_data_reason).toBe("paid_api_not_instrumented");
+    expect(data.totals.calls).toBeNull();
+    expect(data.totals.estimated_cost_usd).toBeNull();
+    expect(JSON.stringify(data)).not.toContain("0.000000");
+    expect(env.LEADERBOARD_KV.put).not.toHaveBeenCalled();
+  });
+
+  it("returns no_data when the window contains only example calls", async () => {
+    const { env, metadata } = createEnv();
+    const item = seed(env, record({ is_example: true }));
+    metadata.set(item.key, item.metadata);
+
+    const response = await usageRequest(env, "?from=2026-10-31&to=2026-10-31");
+    const data = await response.json();
+    expect(data.status).toBe("no_data");
+    expect(data.excluded.example_calls).toBe(1);
+    expect(data.totals.calls).toBeNull();
+    expect(JSON.stringify(data)).not.toContain("0.000000");
+    expect(env.LEADERBOARD_KV.put).not.toHaveBeenCalled();
+  });
+
+  it("filters exact UTC+8 windows and exports cost status in privacy-safe CSV", async () => {
+    const { env, metadata } = createEnv();
+    const priced = seed(env, record({ receipt_id: "priced", occurred_at: "2026-10-31T11:30:00.000Z" }));
+    const unpriced = seed(env, record({ receipt_id: "unpriced", estimated_cost_micro_usd: null, occurred_at: "2026-10-31T11:40:00.000Z" }));
     const excluded = seed(env, record({ occurred_at: "2026-10-31T10:00:00.000Z" }));
     const boundary = seed(env, record({ occurred_at: "2026-10-31T12:00:00.000Z" }));
-    metadata.set(included.key, included.metadata);
-    metadata.set(excluded.key, excluded.metadata);
-    metadata.set(boundary.key, boundary.metadata);
+    for (const item of [priced, unpriced, excluded, boundary]) metadata.set(item.key, item.metadata);
     const query = "?since=2026-10-31T19%3A00%3A00%2B08%3A00&until=2026-10-31T20%3A00%3A00%2B08%3A00";
 
     const response = await usageRequest(env, query);
     const data = await response.json();
-    expect(data.totals.calls).toBe(1);
+    expect(data.totals.calls).toBe(2);
     expect(data.since).toBe("2026-10-31T19:00:00+08:00");
 
     const csv = await usageRequest(env, `${query}&format=csv`);
     const text = await csv.text();
+    const lines = text.trim().split("\n");
+    const pricedRow = lines.find((line) => line.includes(",priced,"))!.split(",");
+    const unpricedRow = lines.find((line) => line.includes(",unpriced,"))!.split(",");
     expect(csv.headers.get("content-type")).toContain("text/csv");
-    expect(text).toContain("occurred_at,receipt_id,source,status,model,input_tokens,output_tokens,estimated_cost_usd,pricing_version");
-    expect(text).toContain("0.001000");
+    expect(lines[0]).toBe("occurred_at,receipt_id,source,status,model,input_tokens,output_tokens,estimated_cost_usd,cost_status,is_example,pricing_version");
+    expect(pricedRow.slice(7, 10)).toEqual(["0.001000", "priced", "false"]);
+    expect(unpricedRow.slice(7, 10)).toEqual(["", "unpriced", "false"]);
     expect(text).not.toContain("script_text");
     expect(env.LEADERBOARD_KV.put).not.toHaveBeenCalled();
   });

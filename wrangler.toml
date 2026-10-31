@@ -32,3 +32,4 @@ LLM_PRICING_JSON = '{"grok-4.7":{"input_usd_per_mtok":null,"cached_input_usd_per
 #   wrangler secret put XAI_API_KEY
 #   wrangler secret put A2A_SHARED_SECRET
 #   wrangler secret put USAGE_READ_TOKEN
+#   wrangler secret put INTERNAL_PATROL_TOKEN

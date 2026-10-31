@@ -17,6 +17,7 @@ function createEnv() {
     XAI_API_KEY: "test-xai-key",
     XAI_BASE_URL: "https://api.x.ai/v1",
     GROK_DEFAULT_MODEL: "grok-test",
+    INTERNAL_PATROL_TOKEN: undefined as string | undefined,
   };
   return { env, store };
 }
@@ -38,13 +39,17 @@ function mcp(
   }), env as any);
 }
 
-function callAnalyzeHook(env: ReturnType<typeof createEnv>["env"], scriptText = validScript) {
+function callAnalyzeHook(
+  env: ReturnType<typeof createEnv>["env"],
+  scriptText = validScript,
+  headers: Record<string, string> = {},
+) {
   return mcp(env, {
     jsonrpc: "2.0",
     id: 3,
     method: "tools/call",
     params: { name: "analyze_hook", arguments: { script_text: scriptText, platform: "tiktok" } },
-  }, { "MCP-Protocol-Version": "2025-06-18" });
+  }, { "MCP-Protocol-Version": "2025-06-18", ...headers });
 }
 
 const validScript = "The maid reveals she is the true heir at the billionaire's wedding.";
@@ -158,6 +163,37 @@ describe("MCP Streamable HTTP", () => {
     const observableOutput = JSON.stringify([record, logSpy.mock.calls]);
     expect(observableOutput).not.toContain(validScript);
     expect(observableOutput).not.toContain("test-xai-key");
+    logSpy.mockRestore();
+  });
+
+  it("marks only authenticated internal patrols without logging the token", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const correct = createEnv();
+    correct.env.INTERNAL_PATROL_TOKEN = "test-patrol-token";
+    const response = await callAnalyzeHook(correct.env, validScript, { "X-GBH-Internal-Patrol": "test-patrol-token" });
+    const responseData = await response.json();
+
+    const wrong = createEnv();
+    wrong.env.INTERNAL_PATROL_TOKEN = "test-patrol-token";
+    await callAnalyzeHook(wrong.env, validScript, { "X-GBH-Internal-Patrol": "wrong-patrol-token" });
+    const unconfigured = createEnv();
+    await callAnalyzeHook(unconfigured.env, validScript, { "X-GBH-Internal-Patrol": "test-patrol-token" });
+
+    const source = (store: Map<string, string>) => {
+      const entry = [...store.entries()].find(([key]) => key.startsWith("usage:llm:"));
+      return JSON.parse(entry![1]).source;
+    };
+    expect(source(correct.store)).toBe("internal_patrol");
+    expect(source(wrong.store)).toBe("mcp");
+    expect(source(unconfigured.store)).toBe("mcp");
+    const observable = JSON.stringify([
+      ...correct.store.values(),
+      ...wrong.store.values(),
+      ...unconfigured.store.values(),
+      logSpy.mock.calls,
+      responseData,
+    ]);
+    expect(observable).not.toContain("test-patrol-token");
     logSpy.mockRestore();
   });
 

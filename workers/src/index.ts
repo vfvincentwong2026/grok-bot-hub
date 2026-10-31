@@ -26,6 +26,7 @@ interface Env {
   LLM_PRICING_JSON?: string;
   LLM_PRICING_VERSION?: string;
   USAGE_READ_TOKEN?: string;
+  INTERNAL_PATROL_TOKEN?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_PRICE_CREATOR_IDR?: string;
   STRIPE_PRICE_STUDIO_IDR?: string;

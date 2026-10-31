@@ -124,6 +124,8 @@ async function callTool(request: Request, env: McpEnv, id: JsonRpcId, params: an
   const headers = new Headers({ "content-type": "application/json" });
   const ip = request.headers.get("CF-Connecting-IP");
   if (ip) headers.set("CF-Connecting-IP", ip);
+  const patrol = request.headers.get("X-GBH-Internal-Patrol");
+  if (patrol) headers.set("X-GBH-Internal-Patrol", patrol);
 
   const analysisResponse = await handleDemoInvoke(new Request(new URL("/v1/demo/invoke", request.url), {
     method: "POST",

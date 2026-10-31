@@ -3,7 +3,7 @@ import { extractOutputText, parseHookAnalysis } from "./analysis-result";
 import { AI_ATTRIBUTION } from "./attribution";
 import { hashScriptText, recordFirstPartyEvent } from "./events";
 import { recordMetric } from "./leaderboard";
-import { buildLlmUsageRecord, recordLlmUsage, type LlmUsageEnv, type LlmUsageSource } from "./llm-usage";
+import { buildLlmUsageRecord, isInternalPatrol, recordLlmUsage, type LlmUsageEnv, type LlmUsageSource } from "./llm-usage";
 import { getBot } from "./registry";
 
 interface DemoEnv extends LlmUsageEnv {
@@ -17,6 +17,7 @@ const HOURLY_IP_LIMIT = 3;
 const DAILY_GLOBAL_LIMIT = 20;
 
 export async function handleDemoInvoke(request: Request, env: DemoEnv, source: LlmUsageSource = "web_demo"): Promise<Response> {
+  const patrol = await isInternalPatrol(request, env);
   const origin = request.headers.get("Origin");
   if (origin && new URL(origin).host !== new URL(request.url).host) {
     return json({ ok: false, error: "cross_origin_demo_forbidden" }, 403);
@@ -74,7 +75,7 @@ export async function handleDemoInvoke(request: Request, env: DemoEnv, source: L
     const tokens = typeof aiResp?.usage?.total_tokens === "number" ? aiResp.usage.total_tokens : undefined;
     const receiptId = crypto.randomUUID();
     const usageRecord = buildLlmUsageRecord(env, aiResp, {
-      source,
+      source: patrol ? "internal_patrol" : source,
       status: "ok",
       latencyMs: latency_ms,
       isExample: scriptText === INDONESIAN_EXAMPLE,
